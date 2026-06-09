@@ -3,11 +3,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getOrders } from '@/lib/db/orders'
-import { bulkUpdateStatus, bulkMarkAfas } from '@/lib/actions/orders'
+import { bulkUpdateStatus, bulkMarkAfas, bulkDeleteOrders } from '@/lib/actions/orders'
 import { getAllKanaalConfigs } from '@/lib/actions/kanaal-config'
 import { supabase } from '@/lib/supabase/client'
 import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE, channelStyle } from '@/lib/styles'
-import { Search, ChevronDown, CheckSquare } from 'lucide-react'
+import { Search, ChevronDown, CheckSquare, Trash2 } from 'lucide-react'
 import type { Order, OrderStatus, Kanaal, AfasStatus } from '@/lib/types/index'
 
 function formatDateTime(iso: string) {
@@ -63,6 +63,7 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkWorking, setBulkWorking] = useState(false)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const bulkRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -135,7 +136,7 @@ export default function OrdersPage() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (bulkRef.current && !bulkRef.current.contains(e.target as Node)) {
-        setBulkOpen(false)
+        closeBulk()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -158,6 +159,21 @@ export default function OrdersPage() {
     setSelected(new Set())
     setBulkWorking(false)
     getOrders().then(setOrders)
+  }
+
+  async function handleBulkDelete() {
+    setBulkOpen(false)
+    setBulkDeleteConfirm(false)
+    setBulkWorking(true)
+    await bulkDeleteOrders(Array.from(selected))
+    setSelected(new Set())
+    setBulkWorking(false)
+    getOrders().then(setOrders)
+  }
+
+  function closeBulk() {
+    setBulkOpen(false)
+    setBulkDeleteConfirm(false)
   }
 
   return (
@@ -207,6 +223,37 @@ export default function OrdersPage() {
                       <CheckSquare size={13} className="text-[#16A34A]" />
                       Markeren als ingevoerd
                     </button>
+                  </div>
+                  <div className="border-t border-[#F3F4F6] mt-1 pt-1">
+                    {bulkDeleteConfirm ? (
+                      <div className="px-3 py-2">
+                        <p className="text-[13px] text-[#374151] mb-2">
+                          {selected.size} order{selected.size !== 1 ? 's' : ''} permanent verwijderen?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleBulkDelete}
+                            className="flex-1 py-1 text-[13px] font-semibold text-white bg-[#EF4444] rounded hover:bg-[#DC2626] transition-colors"
+                          >
+                            Ja, verwijder
+                          </button>
+                          <button
+                            onClick={() => setBulkDeleteConfirm(false)}
+                            className="flex-1 py-1 text-[13px] border border-[#E5E7EB] rounded text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                          >
+                            Annuleren
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setBulkDeleteConfirm(true)}
+                        className="w-full text-left px-3 py-1.5 text-[14px] text-[#EF4444] hover:bg-[#FEF2F2] transition-colors flex items-center gap-2"
+                      >
+                        <Trash2 size={13} />
+                        Verwijderen
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

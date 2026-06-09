@@ -53,6 +53,12 @@ export async function deleteOrder(id: string) {
   await supabase.from('orders').delete().eq('id', id)
 }
 
+export async function bulkDeleteOrders(ids: string[]) {
+  const supabase = await createClient()
+  await supabase.from('order_regels').delete().in('order_id', ids)
+  await supabase.from('orders').delete().in('id', ids)
+}
+
 export async function bulkMarkAfas(ids: string[]) {
   const supabase = await createClient()
   await supabase
