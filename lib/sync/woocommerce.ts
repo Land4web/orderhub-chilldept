@@ -1,4 +1,4 @@
-import type { Order, OrderRegel, Vervoerder } from '@/lib/types'
+import type { Order, OrderRegel } from '@/lib/types'
 
 interface WCBilling {
   first_name: string; last_name: string; email: string
@@ -7,25 +7,15 @@ interface WCBilling {
 interface WCLineItem {
   sku: string; name: string; quantity: number; price: string; total: string
 }
-interface WCShippingLine { method_title: string }
 interface WCOrder {
   id: number; number: string; status: string; billing: WCBilling
-  line_items: WCLineItem[]; shipping_lines: WCShippingLine[]
+  line_items: WCLineItem[]
   total: string; date_created: string; date_modified: string; customer_note: string
 }
 
 const STATUS_MAP: Record<string, Order['status']> = {
   pending: 'new', processing: 'processing', 'on-hold': 'processing',
   completed: 'completed', cancelled: 'cancelled', refunded: 'returned', failed: 'failed',
-}
-
-function detectVervoerder(lines: WCShippingLine[]): Vervoerder | null {
-  const t = (lines[0]?.method_title ?? '').toLowerCase()
-  if (t.includes('dhl')) return 'DHL'
-  if (t.includes('postnl') || t.includes('post nl')) return 'PostNL'
-  if (t.includes('dpd')) return 'DPD'
-  if (t.includes('gls')) return 'GLS'
-  return null
 }
 
 export async function fetchWooCommerceOrders(
@@ -62,8 +52,6 @@ export function mapWCOrder(wc: WCOrder, kanaal = 'WooCommerce'): { order: Omit<O
       klantStad: wc.billing.city,
       klantLand: wc.billing.country,
       totaal: parseFloat(wc.total),
-      vervoerder: detectVervoerder(wc.shipping_lines),
-      trackingCode: null,
       notities: wc.customer_note || null,
       afasIngevoerdOp: null,
       aangemaaktOp: new Date(wc.date_created).toISOString(),

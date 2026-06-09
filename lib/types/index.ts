@@ -1,12 +1,12 @@
 export type Kanaal = string
 export type KanaalType = 'woocommerce' | 'mirakl'
 
+
 export interface KanaalConfigRow {
   kanaal: string
   type: KanaalType
   config: Record<string, string>
 }
-export type Vervoerder = 'DHL' | 'PostNL' | 'DPD' | 'GLS'
 
 export type OrderStatus =
   | 'new'
@@ -41,8 +41,6 @@ export interface Order {
   klantLand: string
   regels: OrderRegel[]
   totaal: number
-  vervoerder: Vervoerder | null
-  trackingCode: string | null
   aangemaaktOp: string
   bijgewerktOp: string
   notities: string | null

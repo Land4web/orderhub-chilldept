@@ -16,8 +16,6 @@ function mapOrder(row: Record<string, unknown>, regels: OrderRegel[]): Order {
     klantLand: row.klant_land as string,
     regels,
     totaal: Number(row.totaal),
-    vervoerder: (row.vervoerder as Order['vervoerder']) ?? null,
-    trackingCode: (row.tracking_code as string) ?? null,
     notities: (row.notities as string) ?? null,
     afasIngevoerdOp: (row.afas_ingevoerd_op as string) ?? null,
     aangemaaktOp: row.aangemaakt_op as string,

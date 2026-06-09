@@ -1,21 +1,13 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import type { OrderStatus, Vervoerder } from '@/lib/types'
+import type { OrderStatus } from '@/lib/types'
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   const supabase = await createClient()
   await supabase
     .from('orders')
     .update({ status, bijgewerkt_op: new Date().toISOString() })
-    .eq('id', id)
-}
-
-export async function saveTrackingCode(id: string, vervoerder: Vervoerder, trackingCode: string) {
-  const supabase = await createClient()
-  await supabase
-    .from('orders')
-    .update({ vervoerder, tracking_code: trackingCode, bijgewerkt_op: new Date().toISOString() })
     .eq('id', id)
 }
 

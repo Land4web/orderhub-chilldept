@@ -43,7 +43,7 @@ export default function DashboardPage() {
     .reduce((sum, o) => sum + o.totaal, 0)
 
   const actionItems = orders.filter(o =>
-    o.status === 'new' || o.status === 'failed' || (o.status === 'ready_to_ship' && !o.trackingCode)
+    o.status === 'new' || o.status === 'failed' || o.status === 'ready_to_ship'
   )
 
   const channelStatus = kanalen.map(kanaal => {

@@ -1,4 +1,4 @@
-import type { Order, OrderRegel, Vervoerder } from '@/lib/types'
+import type { Order, OrderRegel } from '@/lib/types'
 
 interface MiraklAddress {
   firstname: string; lastname: string; street_1: string
@@ -12,7 +12,7 @@ interface MiraklOrderLine {
 interface MiraklOrder {
   order_id: string; order_state: string; customer: MiraklCustomer
   shipping_address: MiraklAddress; order_lines: MiraklOrderLine[]
-  total_price: number; shipping_company: string | null; shipping_tracking: string | null
+  total_price: number
   order_date: string; last_updated_date: string
 }
 interface MiraklResponse { orders: MiraklOrder[]; total_count: number }
@@ -22,16 +22,6 @@ const STATUS_MAP: Record<string, Order['status']> = {
   SHIPPING: 'ready_to_ship', RECEIVED: 'completed',
   REFUSED: 'cancelled', REFUNDED: 'returned',
   CLOSED: 'completed', INCIDENT_OPEN: 'processing', INCIDENT_CLOSED: 'processing',
-}
-
-function detectVervoerder(company: string | null): Vervoerder | null {
-  if (!company) return null
-  const c = company.toLowerCase()
-  if (c.includes('dhl')) return 'DHL'
-  if (c.includes('postnl')) return 'PostNL'
-  if (c.includes('dpd')) return 'DPD'
-  if (c.includes('gls')) return 'GLS'
-  return null
 }
 
 export async function fetchMiraklOrders(url: string, apiKey: string): Promise<MiraklOrder[]> {
@@ -68,8 +58,6 @@ export function mapMiraklOrder(m: MiraklOrder, kanaal = 'Mirakl'): { order: Omit
       klantStad: addr.city,
       klantLand: addr.country_iso_code,
       totaal: m.total_price,
-      vervoerder: detectVervoerder(m.shipping_company),
-      trackingCode: m.shipping_tracking ?? null,
       notities: null,
       afasIngevoerdOp: null,
       aangemaaktOp: new Date(m.order_date).toISOString(),

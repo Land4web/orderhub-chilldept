@@ -4,10 +4,10 @@ import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getOrderById } from '@/lib/db/orders'
-import { updateOrderStatus, saveTrackingCode, saveNote, toggleAfasStatus } from '@/lib/actions/orders'
-import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE } from '@/lib/styles'
+import { updateOrderStatus, saveNote, toggleAfasStatus } from '@/lib/actions/orders'
+import { STATUS_LABEL, STATUS_STYLE, channelStyle } from '@/lib/styles'
 import { Check, ChevronDown, Download } from 'lucide-react'
-import type { Order, OrderStatus, AfasStatus, Vervoerder } from '@/lib/types'
+import type { Order, OrderStatus, AfasStatus } from '@/lib/types'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString('nl-NL', {
@@ -24,7 +24,6 @@ function formatDateShort(iso: string) {
 }
 
 const ALL_STATUSES: OrderStatus[] = ['new', 'processing', 'ready_to_ship', 'shipped', 'completed', 'cancelled', 'returned']
-const VERVOERDERS: Vervoerder[] = ['DHL', 'PostNL', 'DPD', 'GLS']
 
 function buildTimeline(status: OrderStatus, afasStatus: AfasStatus, order: Order) {
   const events: { title: string; meta: string; active: boolean; green: boolean }[] = []
@@ -68,11 +67,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [status, setStatus] = useState<OrderStatus>('new')
   const [afasStatus, setAfasStatus] = useState<AfasStatus>('not_entered')
   const [afasIngevoerdOp, setAfasIngevoerdOp] = useState<string | null>(null)
-  const [trackingCode, setTrackingCode] = useState<string | null>(null)
-  const [vervoerder, setVervoerder] = useState<Vervoerder | null>(null)
-  const [ttInput, setTtInput] = useState('')
-  const [ttVervoerder, setTtVervoerder] = useState<Vervoerder>('PostNL')
-  const [ttSaved, setTtSaved] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
   const [addingNote, setAddingNote] = useState(false)
@@ -84,8 +78,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       setStatus(o.status)
       setAfasStatus(o.afasStatus)
       setAfasIngevoerdOp(o.afasIngevoerdOp ?? null)
-      setTrackingCode(o.trackingCode)
-      setVervoerder(o.vervoerder)
       setNote(o.notities)
     })
   }, [id])
@@ -104,17 +96,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   async function handleStatusChange(newStatus: OrderStatus) {
     setStatus(newStatus)
     await updateOrderStatus(id, newStatus)
-  }
-
-  async function saveTT() {
-    if (!ttInput.trim()) return
-    const code = ttInput.trim()
-    setTrackingCode(code)
-    setVervoerder(ttVervoerder)
-    setTtInput('')
-    setTtSaved(true)
-    setTimeout(() => setTtSaved(false), 2500)
-    await saveTrackingCode(id, ttVervoerder, code)
   }
 
   async function handleToggleAfas() {
@@ -146,7 +127,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-lg font-semibold text-[#111827]">{order.id}</h1>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${CHANNEL_STYLE[order.kanaal]}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
             {order.kanaal}
           </span>
           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${STATUS_STYLE[status]}`}>
@@ -352,69 +333,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* Verzending / T&T */}
-          <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
-            <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-3">Verzending</p>
-            {trackingCode ? (
-              <div className="space-y-2.5">
-                <div>
-                  <p className="text-[12px] text-[#9CA3AF]">Vervoerder</p>
-                  <p className="text-[15.5px] text-[#374151]">{vervoerder ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[12px] text-[#9CA3AF]">Track & trace</p>
-                  <p className="text-[15.5px] font-mono text-[#374151]">{trackingCode}</p>
-                </div>
-                <button
-                  onClick={() => setTrackingCode(null)}
-                  className="text-[12px] text-[#9CA3AF] hover:text-[#374151] underline"
-                >
-                  Wijzigen
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div>
-                  <p className="text-[12px] text-[#9CA3AF] mb-1.5">Vervoerder</p>
-                  <select
-                    value={ttVervoerder}
-                    onChange={e => setTtVervoerder(e.target.value as Vervoerder)}
-                    className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white text-[#374151]"
-                  >
-                    {VERVOERDERS.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <p className="text-[12px] text-[#9CA3AF] mb-1.5">Track & trace code</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={ttInput}
-                      onChange={e => setTtInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && saveTT()}
-                      placeholder="Voer trackingcode in…"
-                      className="flex-1 px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] text-[#374151] min-w-0"
-                    />
-                    <button
-                      onClick={saveTT}
-                      className="px-3 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] transition-colors whitespace-nowrap"
-                    >
-                      Opslaan
-                    </button>
-                  </div>
-                </div>
-                {ttSaved && (
-                  <p className="text-[12px] text-[#16A34A] flex items-center gap-1">
-                    <Check size={11} /> Opgeslagen
-                  </p>
-                )}
-                <p className="text-[12px] text-[#9CA3AF]">
-                  Kan ook worden ingevuld via de fulfillment portal
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* AFAS */}
           <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
             <div className="flex items-center justify-between mb-3">
@@ -455,7 +373,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               <div>
                 <p className="text-[12px] text-[#9CA3AF]">Kanaal</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${CHANNEL_STYLE[order.kanaal]}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
                   {order.kanaal}
                 </span>
               </div>

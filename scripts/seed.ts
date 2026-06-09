@@ -75,8 +75,6 @@ async function seed() {
       klant_stad: rest.klantStad,
       klant_land: rest.klantLand,
       totaal: rest.totaal,
-      vervoerder: rest.vervoerder,
-      tracking_code: rest.trackingCode,
       notities: rest.notities,
       afas_ingevoerd_op: rest.afasIngevoerdOp ?? null,
       aangemaakt_op: rest.aangemaaktOp,

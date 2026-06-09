@@ -101,15 +101,14 @@ export default function FulfillmentPage() {
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Klant</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Afleveradres</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Status</th>
-                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Track & trace</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden sm:table-cell">Producten</th>
               </tr>
             </thead>
             <tbody>
               {orders.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Laden…</td></tr>
+                <tr><td colSpan={5} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Laden…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Geen orders gevonden</td></tr>
+                <tr><td colSpan={5} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Geen orders gevonden</td></tr>
               ) : (
                 filtered.map(order => (
                   <tr key={order.id} className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors">
@@ -131,13 +130,6 @@ export default function FulfillmentPage() {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${STATUS_STYLE[order.status]}`}>
                         {STATUS_LABEL[order.status]}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 hidden md:table-cell">
-                      {order.trackingCode ? (
-                        <span className="text-[12.5px] font-mono text-[#6B7280]">{order.trackingCode}</span>
-                      ) : (
-                        <span className="text-[15.5px] text-[#D1D5DB]">—</span>
-                      )}
                     </td>
                     <td className="px-4 py-2.5 text-[12.5px] text-[#6B7280] hidden sm:table-cell">
                       {order.regels.map(r => `${r.aantal}× ${r.naam}`).join(', ').slice(0, 50)}

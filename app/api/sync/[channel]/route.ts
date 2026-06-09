@@ -30,8 +30,7 @@ async function upsertOrder(
     klant_naam: order.klantNaam, klant_email: order.klantEmail,
     klant_adres: order.klantAdres, klant_postcode: order.klantPostcode,
     klant_stad: order.klantStad, klant_land: order.klantLand,
-    totaal: order.totaal, vervoerder: order.vervoerder,
-    tracking_code: order.trackingCode, notities: order.notities,
+    totaal: order.totaal, notities: order.notities,
     afas_ingevoerd_op: order.afasIngevoerdOp,
     aangemaakt_op: order.aangemaaktOp, bijgewerkt_op: order.bijgewerktOp,
   }, { onConflict: 'id' })
