@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getOrders } from '@/lib/db/orders'
 import { getSyncLogs } from '@/lib/db/sync-logs'
-import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE, SYNC_STYLE, SYNC_LABEL } from '@/lib/styles'
+import { getAllKanaalConfigs } from '@/lib/actions/kanaal-config'
+import { STATUS_LABEL, STATUS_STYLE, channelStyle, SYNC_STYLE, SYNC_LABEL } from '@/lib/styles'
 import { ShoppingCart, TrendingUp, Clock, AlertTriangle, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import type { Order, SyncLog, SyncStatus, Kanaal } from '@/lib/types'
+import type { Order, SyncLog, SyncStatus } from '@/lib/types'
 
 function SyncStatusIcon({ status }: { status: SyncStatus }) {
   if (status === 'success') return <CheckCircle size={14} className="text-[#16A34A]" />
@@ -21,10 +22,12 @@ function formatDate(iso: string) {
 export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
+  const [kanalen, setKanalen] = useState<string[]>([])
 
   useEffect(() => {
     getOrders().then(setOrders)
     getSyncLogs().then(setSyncLogs)
+    getAllKanaalConfigs().then(rows => setKanalen(rows.map(r => r.kanaal)))
   }, [])
 
   const recentOrders = [...orders]
@@ -43,8 +46,7 @@ export default function DashboardPage() {
     o.status === 'new' || o.status === 'failed' || (o.status === 'ready_to_ship' && !o.trackingCode)
   )
 
-  const channels: Kanaal[] = ['WooCommerce', 'bol.com', 'Mirakl', 'eBay']
-  const channelStatus = channels.map(kanaal => {
+  const channelStatus = kanalen.map(kanaal => {
     const logs = syncLogs.filter(l => l.kanaal === kanaal).sort(
       (a, b) => new Date(b.uitgevoerdOp).getTime() - new Date(a.uitgevoerdOp).getTime()
     )
@@ -140,7 +142,7 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-4 py-2.5 text-[15.5px] text-[#374151]">{order.klantNaam}</td>
                   <td className="px-4 py-2.5 hidden sm:table-cell">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${CHANNEL_STYLE[order.kanaal]}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
                       {order.kanaal}
                     </span>
                   </td>

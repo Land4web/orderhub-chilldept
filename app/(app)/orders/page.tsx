@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getOrders } from '@/lib/db/orders'
 import { bulkUpdateStatus, bulkMarkAfas } from '@/lib/actions/orders'
+import { getAllKanaalConfigs } from '@/lib/actions/kanaal-config'
 import { supabase } from '@/lib/supabase/client'
 import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE, channelStyle } from '@/lib/styles'
 import { Search, ChevronDown, CheckSquare } from 'lucide-react'
@@ -15,7 +16,6 @@ function formatDateTime(iso: string) {
 }
 
 const ALL_STATUSES: OrderStatus[] = ['new', 'processing', 'ready_to_ship', 'shipped', 'completed', 'cancelled', 'returned', 'failed']
-const ALL_CHANNELS: Kanaal[] = ['WooCommerce', 'bol.com', 'Mirakl', 'eBay']
 const PAGE_SIZES = [20, 50, 100]
 
 const DATE_FILTER_OPTIONS = [
@@ -59,12 +59,14 @@ export default function OrdersPage() {
   const [dateFilter, setDateFilter] = useState('')
   const [pageSize, setPageSize] = useState(20)
   const [page, setPage] = useState(1)
+  const [kanalen, setKanalen] = useState<string[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkWorking, setBulkWorking] = useState(false)
   const bulkRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    getAllKanaalConfigs().then(rows => setKanalen(rows.map(r => r.kanaal)))
     getOrders().then(setOrders)
     const channel = supabase
       .channel('orders-realtime')
@@ -231,7 +233,7 @@ export default function OrdersPage() {
           className="text-[15.5px] border border-[#E5E7EB] rounded-md px-2.5 py-1.5 outline-none focus:border-[#E8A000] bg-white text-[#374151]"
         >
           <option value="">Alle kanalen</option>
-          {ALL_CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
+          {kanalen.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select
           value={statusFilter}
