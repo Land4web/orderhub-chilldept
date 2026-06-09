@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { getProfiles, updateUserRole, createUser, deleteUser } from '@/lib/actions/users'
+import { getProfiles, updateUserRole, createUser, deleteUser, updateUserProfile, adminResetPassword, updateOwnPassword } from '@/lib/actions/users'
 import { getAllKanaalConfigs, saveKanaalConfig, deleteKanaalConfig } from '@/lib/actions/kanaal-config'
 import { ROLE_LABELS } from '@/lib/auth'
-import { Users, Settings, Shield, Trash2, Plus, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Users, Settings, Shield, Trash2, Plus, Check, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import type { Role } from '@/lib/auth'
 import type { Profile } from '@/lib/actions/users'
 import type { KanaalConfigRow, KanaalType } from '@/lib/types'
@@ -174,6 +174,21 @@ export default function InstellingenPage() {
   const [addError, setAddError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', initials: '', newPassword: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  // Mijn account
+  const [ownName, setOwnName] = useState('')
+  const [ownInitials, setOwnInitials] = useState('')
+  const [ownProfileSaving, setOwnProfileSaving] = useState(false)
+  const [ownProfileSaved, setOwnProfileSaved] = useState(false)
+  const [ownNewPass, setOwnNewPass] = useState('')
+  const [ownConfirmPass, setOwnConfirmPass] = useState('')
+  const [ownPassSaving, setOwnPassSaving] = useState(false)
+  const [ownPassError, setOwnPassError] = useState('')
+  const [ownPassSuccess, setOwnPassSuccess] = useState(false)
 
   // Kanalen
   const [kanalen, setKanalen] = useState<KanaalConfigRow[]>([])
@@ -203,6 +218,10 @@ export default function InstellingenPage() {
     if (user?.role !== 'admin') return
     loadTeam()
   }, [user?.role])
+
+  useEffect(() => {
+    if (user) { setOwnName(user.name); setOwnInitials(user.initials) }
+  }, [user])
 
   useEffect(() => {
     if (activeTab === 'kanalen') loadKanalen()
@@ -236,6 +255,50 @@ export default function InstellingenPage() {
     const { error } = await deleteUser(id)
     setDeletingId(null)
     if (!error) setTeam(prev => prev.filter(m => m.id !== id))
+  }
+
+  function openEdit(member: Profile) {
+    if (editingId === member.id) { setEditingId(null); return }
+    setEditingId(member.id)
+    setEditForm({ name: member.name, initials: member.initials, newPassword: '' })
+    setEditError('')
+  }
+
+  async function handleEditSave(id: string) {
+    setEditSaving(true)
+    setEditError('')
+    const { error: profileErr } = await updateUserProfile(id, editForm.name, editForm.initials)
+    if (profileErr) { setEditError(profileErr); setEditSaving(false); return }
+    if (editForm.newPassword) {
+      const { error: passErr } = await adminResetPassword(id, editForm.newPassword)
+      if (passErr) { setEditError(passErr); setEditSaving(false); return }
+    }
+    setEditSaving(false)
+    setEditingId(null)
+    setTeam(prev => prev.map(m => m.id === id ? { ...m, name: editForm.name, initials: editForm.initials } : m))
+  }
+
+  async function handleOwnProfileSave() {
+    setOwnProfileSaving(true)
+    await updateUserProfile(user!.id, ownName, ownInitials)
+    setOwnProfileSaving(false)
+    setOwnProfileSaved(true)
+    setTimeout(() => setOwnProfileSaved(false), 2500)
+  }
+
+  async function handleOwnPasswordChange(e: React.FormEvent) {
+    e.preventDefault()
+    setOwnPassError('')
+    if (ownNewPass.length < 6) { setOwnPassError('Wachtwoord moet minimaal 6 tekens zijn'); return }
+    if (ownNewPass !== ownConfirmPass) { setOwnPassError('Wachtwoorden komen niet overeen'); return }
+    setOwnPassSaving(true)
+    const { error } = await updateOwnPassword(ownNewPass)
+    setOwnPassSaving(false)
+    if (error) { setOwnPassError(error) } else {
+      setOwnNewPass(''); setOwnConfirmPass('')
+      setOwnPassSuccess(true)
+      setTimeout(() => setOwnPassSuccess(false), 3000)
+    }
   }
 
   async function handleNieuwKanaal(e: React.FormEvent) {
@@ -401,33 +464,93 @@ export default function InstellingenPage() {
             ) : team.length === 0 ? (
               <div className="px-4 py-6 text-center text-[15px] text-[#9CA3AF]">Geen gebruikers gevonden</div>
             ) : team.map(member => (
-              <div key={member.id} className="flex items-center justify-between px-4 py-3.5">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-[#E8A000] flex items-center justify-center flex-shrink-0">
-                    <span className="text-[11px] font-bold text-white">{member.initials}</span>
+              <div key={member.id}>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-[#E8A000] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[11px] font-bold text-white">{member.initials}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[15.5px] font-medium text-[#111827]">{member.name}</p>
+                      <p className="text-[12px] text-[#9CA3AF]">{member.email || '—'}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[15.5px] font-medium text-[#111827]">{member.name}</p>
-                    <p className="text-[12px] text-[#9CA3AF]">{member.email || '—'}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <select
+                      value={member.role}
+                      onChange={e => handleRoleChange(member.id, e.target.value as Role)}
+                      className="text-[13px] border border-[#E5E7EB] rounded-md px-2 py-1 outline-none focus:border-[#E8A000] bg-white text-[#374151]"
+                    >
+                      {ALL_ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                    </select>
+                    <button
+                      onClick={() => openEdit(member)}
+                      title="Profiel bewerken"
+                      className={`p-1.5 transition-colors ${editingId === member.id ? 'text-[#E8A000]' : 'text-[#9CA3AF] hover:text-[#374151]'}`}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(member.id, member.name)}
+                      disabled={deletingId === member.id || member.id === user?.id}
+                      title={member.id === user?.id ? 'Je kunt jezelf niet verwijderen' : 'Verwijderen'}
+                      className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <select
-                    value={member.role}
-                    onChange={e => handleRoleChange(member.id, e.target.value as Role)}
-                    className="text-[13px] border border-[#E5E7EB] rounded-md px-2 py-1 outline-none focus:border-[#E8A000] bg-white text-[#374151]"
-                  >
-                    {ALL_ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                  </select>
-                  <button
-                    onClick={() => handleDelete(member.id, member.name)}
-                    disabled={deletingId === member.id || member.id === user?.id}
-                    title={member.id === user?.id ? 'Je kunt jezelf niet verwijderen' : 'Verwijderen'}
-                    className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                {editingId === member.id && (
+                  <div className="px-4 pb-4 pt-3 border-t border-[#F3F4F6] bg-[#F9FAFB]">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Naam</label>
+                        <input
+                          type="text"
+                          value={editForm.name}
+                          onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Initialen</label>
+                        <input
+                          type="text"
+                          maxLength={3}
+                          value={editForm.initials}
+                          onChange={e => setEditForm(f => ({ ...f, initials: e.target.value.toUpperCase() }))}
+                          className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Nieuw wachtwoord <span className="text-[#C4C9D4] font-normal">(optioneel)</span></label>
+                        <input
+                          type="password"
+                          value={editForm.newPassword}
+                          onChange={e => setEditForm(f => ({ ...f, newPassword: e.target.value }))}
+                          placeholder="Laat leeg om niet te wijzigen"
+                          className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                        />
+                      </div>
+                    </div>
+                    {editError && <p className="text-[13px] text-[#EF4444] mb-3">{editError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditSave(member.id)}
+                        disabled={editSaving || !editForm.name}
+                        className="px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
+                      >
+                        {editSaving ? 'Opslaan…' : 'Opslaan'}
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="px-4 py-1.5 text-[15px] font-medium border border-[#E5E7EB] rounded-md text-[#374151] hover:bg-[#F3F4F6] transition-colors"
+                      >
+                        Annuleren
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -454,10 +577,74 @@ export default function InstellingenPage() {
                 </span>
               </div>
             </div>
-            <div className="pt-3 border-t border-[#F3F4F6]">
-              <p className="text-[12px] text-[#9CA3AF]">
-                Profielbewerking en wachtwoordwijziging worden beschikbaar in een volgende fase.
-              </p>
+            <div className="pt-3 border-t border-[#F3F4F6] space-y-4">
+              <div>
+                <p className="text-[13px] font-medium text-[#374151] mb-2">Profiel</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Naam</label>
+                    <input
+                      type="text"
+                      value={ownName}
+                      onChange={e => setOwnName(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Initialen</label>
+                    <input
+                      type="text"
+                      maxLength={3}
+                      value={ownInitials}
+                      onChange={e => setOwnInitials(e.target.value.toUpperCase())}
+                      className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleOwnProfileSave}
+                  disabled={ownProfileSaving || !ownName}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
+                >
+                  {ownProfileSaved ? <><Check size={13} /> Opgeslagen</> : ownProfileSaving ? 'Opslaan…' : 'Opslaan'}
+                </button>
+              </div>
+              <div className="pt-3 border-t border-[#F3F4F6]">
+                <p className="text-[13px] font-medium text-[#374151] mb-2">Wachtwoord wijzigen</p>
+                <form onSubmit={handleOwnPasswordChange} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Nieuw wachtwoord</label>
+                      <input
+                        type="password"
+                        value={ownNewPass}
+                        onChange={e => setOwnNewPass(e.target.value)}
+                        placeholder="Min. 6 tekens"
+                        className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Bevestig wachtwoord</label>
+                      <input
+                        type="password"
+                        value={ownConfirmPass}
+                        onChange={e => setOwnConfirmPass(e.target.value)}
+                        placeholder="Herhaal wachtwoord"
+                        className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                      />
+                    </div>
+                  </div>
+                  {ownPassError && <p className="text-[13px] text-[#EF4444]">{ownPassError}</p>}
+                  {ownPassSuccess && <p className="text-[13px] text-[#16A34A]">Wachtwoord gewijzigd.</p>}
+                  <button
+                    type="submit"
+                    disabled={ownPassSaving || !ownNewPass || !ownConfirmPass}
+                    className="px-4 py-1.5 text-[15px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] disabled:opacity-50 transition-colors"
+                  >
+                    {ownPassSaving ? 'Wijzigen…' : 'Wachtwoord wijzigen'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

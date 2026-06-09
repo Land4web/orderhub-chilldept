@@ -59,3 +59,26 @@ export async function deleteUser(id: string): Promise<{ error?: string }> {
   if (error) return { error: error.message }
   return {}
 }
+
+export async function updateUserProfile(
+  id: string, name: string, initials: string
+): Promise<{ error?: string }> {
+  const { error } = await supabaseAdmin.from('profiles').update({ name, initials }).eq('id', id)
+  if (error) return { error: error.message }
+  return {}
+}
+
+export async function adminResetPassword(
+  id: string, password: string
+): Promise<{ error?: string }> {
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { password })
+  if (error) return { error: error.message }
+  return {}
+}
+
+export async function updateOwnPassword(password: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) return { error: error.message }
+  return {}
+}
