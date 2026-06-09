@@ -317,7 +317,7 @@ export default function OrdersPage() {
                 <th className="px-4 py-2.5 w-8">
                   <input type="checkbox" checked={allOnPageSelected} onChange={toggleAll} className="cursor-pointer accent-[#E8A000]" />
                 </th>
-                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide whitespace-nowrap">Order ID</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide whitespace-nowrap">#</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden sm:table-cell">Kanaal</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Klant</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Producten</th>
@@ -349,8 +349,7 @@ export default function OrdersPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className="font-medium text-[#111827] text-[15.5px] font-mono">{order.id}</span>
-                      <p className="text-[12px] text-[#9CA3AF] mt-0.5">{order.kanaalOrderId}</p>
+                      <span className="font-medium text-[#111827] text-[15.5px] font-mono">{order.kanaalOrderId || '—'}</span>
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
