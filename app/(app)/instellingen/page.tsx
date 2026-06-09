@@ -64,12 +64,14 @@ export default function InstellingenPage() {
 
   async function handleSaveKanaal(kanaal: string, config: Record<string, string>) {
     setSavingKanaal(kanaal)
-    await saveKanaalConfig(kanaal, config)
+    const result = await saveKanaalConfig(kanaal, config)
     setSavingKanaal(null)
-    setSavedKanaal(kanaal)
-    if (kanaal === 'WooCommerce') setWcConfigured(true)
-    if (kanaal === 'Mirakl') setMiraklConfigured(true)
-    setTimeout(() => setSavedKanaal(null), 2500)
+    if (!result.error) {
+      setSavedKanaal(kanaal)
+      if (kanaal === 'WooCommerce') setWcConfigured(true)
+      if (kanaal === 'Mirakl') setMiraklConfigured(true)
+      setTimeout(() => setSavedKanaal(null), 2500)
+    }
   }
 
   async function handleRoleChange(id: string, role: Role) {
