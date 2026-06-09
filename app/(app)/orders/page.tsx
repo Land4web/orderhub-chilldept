@@ -277,15 +277,14 @@ export default function OrdersPage() {
                 <th className="text-right px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Bedrag</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Status</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden lg:table-cell">AFAS</th>
-                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden lg:table-cell">Vervoerder</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Datum</th>
               </tr>
             </thead>
             <tbody>
               {orders.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Laden…</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Laden…</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Geen orders gevonden</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-[15.5px] text-[#9CA3AF]">Geen orders gevonden</td></tr>
               ) : (
                 paginated.map(order => (
                   <tr
@@ -332,9 +331,6 @@ export default function OrdersPage() {
                       }`}>
                         {order.afasStatus === 'entered' ? 'Ingevoerd' : 'Niet ingevoerd'}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-[15.5px] hidden lg:table-cell">
-                      {order.vervoerder ? <span className="text-[#374151]">{order.vervoerder}</span> : <span className="text-[#9CA3AF]">—</span>}
                     </td>
                     <td className="px-4 py-2.5 text-[15.5px] text-[#9CA3AF] hidden md:table-cell whitespace-nowrap">
                       {formatDateTime(order.aangemaaktOp)}

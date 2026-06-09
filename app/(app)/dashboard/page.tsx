@@ -122,37 +122,54 @@ export default function DashboardPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-[#E5E7EB]">
-                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide whitespace-nowrap">Order</th>
-                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Klant</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide whitespace-nowrap">Order ID</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden sm:table-cell">Kanaal</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Klant</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Producten</th>
+                <th className="text-right px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Bedrag</th>
                 <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide">Status</th>
-                <th className="text-right px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Totaal</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden lg:table-cell">AFAS</th>
+                <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-[#6B7280] uppercase tracking-wide hidden md:table-cell">Datum</th>
               </tr>
             </thead>
             <tbody>
               {recentOrders.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-[15px] text-[#9CA3AF]">Laden…</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-[15px] text-[#9CA3AF]">Laden…</td></tr>
               ) : recentOrders.map(order => (
-                <tr key={order.id} className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors">
+                <tr key={order.id} className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer" onClick={() => window.location.href = `/orders/${order.id}`}>
                   <td className="px-4 py-2.5">
-                    <Link href={`/orders/${order.id}`} className="font-medium text-[#111827] hover:text-[#E8A000] transition-colors text-[15.5px]">
-                      {order.id}
-                    </Link>
-                    <p className="text-[12px] text-[#9CA3AF] mt-0.5">{formatDate(order.aangemaaktOp)}</p>
+                    <span className="font-medium text-[#111827] text-[15.5px] font-mono">{order.id}</span>
+                    <p className="text-[12px] text-[#9CA3AF] mt-0.5">{order.kanaalOrderId}</p>
                   </td>
-                  <td className="px-4 py-2.5 text-[15.5px] text-[#374151]">{order.klantNaam}</td>
                   <td className="px-4 py-2.5 hidden sm:table-cell">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
                       {order.kanaal}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
+                    <p className="text-[15.5px] text-[#374151]">{order.klantNaam}</p>
+                    <p className="text-[12px] text-[#9CA3AF]">{order.klantStad}</p>
+                  </td>
+                  <td className="px-4 py-2.5 text-[15.5px] text-[#6B7280] hidden md:table-cell">
+                    {order.regels.reduce((s, r) => s + r.aantal, 0)} artikel{order.regels.reduce((s, r) => s + r.aantal, 0) !== 1 ? 'en' : ''}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-[15.5px] font-medium text-[#111827]">
+                    €{order.totaal.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-2.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${STATUS_STYLE[order.status]}`}>
                       {STATUS_LABEL[order.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right text-[15.5px] font-medium text-[#111827] hidden md:table-cell">
-                    €{order.totaal.toFixed(2)}
+                  <td className="px-4 py-2.5 hidden lg:table-cell">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
+                      order.afasStatus === 'entered' ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
+                    }`}>
+                      {order.afasStatus === 'entered' ? 'Ingevoerd' : 'Niet ingevoerd'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-[15.5px] text-[#9CA3AF] hidden md:table-cell whitespace-nowrap">
+                    {formatDate(order.aangemaaktOp)}
                   </td>
                 </tr>
               ))}
