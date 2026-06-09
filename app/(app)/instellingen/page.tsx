@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getProfiles, updateUserRole, createUser, deleteUser } from '@/lib/actions/users'
+import { getKanaalConfig, saveKanaalConfig } from '@/lib/actions/kanaal-config'
 import { ROLE_LABELS } from '@/lib/auth'
-import { Users, Settings, Shield, Trash2, Plus } from 'lucide-react'
+import { Users, Settings, Shield, Trash2, Plus, Check } from 'lucide-react'
 import type { Role } from '@/lib/auth'
 import type { Profile } from '@/lib/actions/users'
 
@@ -29,6 +30,13 @@ export default function InstellingenPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  const [wcForm, setWcForm] = useState({ url: '', consumer_key: '', consumer_secret: '' })
+  const [miraklForm, setMiraklForm] = useState({ url: '', api_key: '' })
+  const [wcConfigured, setWcConfigured] = useState(false)
+  const [miraklConfigured, setMiraklConfigured] = useState(false)
+  const [savingKanaal, setSavingKanaal] = useState<string | null>(null)
+  const [savedKanaal, setSavedKanaal] = useState<string | null>(null)
+
   function loadTeam() {
     setTeamLoading(true)
     getProfiles().then(profiles => {
@@ -41,6 +49,28 @@ export default function InstellingenPage() {
     if (user?.role !== 'admin') return
     loadTeam()
   }, [user?.role])
+
+  useEffect(() => {
+    if (activeTab !== 'kanalen') return
+    getKanaalConfig('WooCommerce').then(cfg => {
+      if (cfg.url) setWcForm(f => ({ ...f, url: cfg.url }))
+      setWcConfigured(!!(cfg.url && cfg.consumer_key))
+    })
+    getKanaalConfig('Mirakl').then(cfg => {
+      if (cfg.url) setMiraklForm(f => ({ ...f, url: cfg.url }))
+      setMiraklConfigured(!!(cfg.url && cfg.api_key))
+    })
+  }, [activeTab])
+
+  async function handleSaveKanaal(kanaal: string, config: Record<string, string>) {
+    setSavingKanaal(kanaal)
+    await saveKanaalConfig(kanaal, config)
+    setSavingKanaal(null)
+    setSavedKanaal(kanaal)
+    if (kanaal === 'WooCommerce') setWcConfigured(true)
+    if (kanaal === 'Mirakl') setMiraklConfigured(true)
+    setTimeout(() => setSavedKanaal(null), 2500)
+  }
 
   async function handleRoleChange(id: string, role: Role) {
     setTeam(prev => prev.map(m => m.id === id ? { ...m, role } : m))
@@ -285,36 +315,128 @@ export default function InstellingenPage() {
 
       {/* Kanalen */}
       {activeTab === 'kanalen' && (
-        <div className="bg-white rounded-lg border border-[#E5E7EB]">
-          <div className="flex items-center gap-2 px-4 py-3.5 border-b border-[#E5E7EB]">
-            <Settings size={14} className="text-[#9CA3AF]" />
-            <h2 className="text-[16px] font-semibold text-[#111827]">Kanaalkoppelingen</h2>
-          </div>
-          <div className="divide-y divide-[#F3F4F6]">
-            {[
-              { naam: 'WooCommerce', beschrijving: 'REST API koppeling', status: 'actief' },
-              { naam: 'bol.com', beschrijving: 'Retailer API v10', status: 'actief' },
-              { naam: 'Obelink (Mirakl)', beschrijving: 'Mirakl Marketplace API', status: 'actief' },
-              { naam: 'Home24 (Mirakl)', beschrijving: 'Mirakl Marketplace API', status: 'actief' },
-              { naam: 'eBay', beschrijving: 'eBay Fulfillment API', status: 'fout' },
-            ].map(kanaal => (
-              <div key={kanaal.naam} className="flex items-center justify-between px-4 py-3.5">
-                <div>
-                  <p className="text-[15.5px] font-medium text-[#111827]">{kanaal.naam}</p>
-                  <p className="text-[12px] text-[#9CA3AF]">{kanaal.beschrijving}</p>
-                </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
-                  kanaal.status === 'actief' ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#FEF2F2] text-[#EF4444]'
-                }`}>
-                  {kanaal.status === 'actief' ? 'Actief' : 'Fout'}
-                </span>
+        <div className="space-y-3.5">
+          {/* WooCommerce */}
+          <div className="bg-white rounded-lg border border-[#E5E7EB]">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
+              <div>
+                <p className="text-[16px] font-semibold text-[#111827]">WooCommerce</p>
+                <p className="text-[12px] text-[#9CA3AF]">REST API koppeling</p>
               </div>
-            ))}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
+                wcConfigured ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
+              }`}>
+                {wcConfigured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
+              </span>
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <div>
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Store URL</label>
+                <input
+                  type="url"
+                  value={wcForm.url}
+                  onChange={e => setWcForm(f => ({ ...f, url: e.target.value }))}
+                  placeholder="https://jouwshop.nl"
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Key</label>
+                  <input
+                    type="password"
+                    value={wcForm.consumer_key}
+                    onChange={e => setWcForm(f => ({ ...f, consumer_key: e.target.value }))}
+                    placeholder={wcConfigured ? '••••••••' : 'ck_...'}
+                    className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Secret</label>
+                  <input
+                    type="password"
+                    value={wcForm.consumer_secret}
+                    onChange={e => setWcForm(f => ({ ...f, consumer_secret: e.target.value }))}
+                    placeholder={wcConfigured ? '••••••••' : 'cs_...'}
+                    className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => handleSaveKanaal('WooCommerce', wcForm)}
+                disabled={savingKanaal === 'WooCommerce' || !wcForm.url}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
+              >
+                {savedKanaal === 'WooCommerce' ? <><Check size={13} /> Opgeslagen</> : savingKanaal === 'WooCommerce' ? 'Opslaan…' : 'Opslaan'}
+              </button>
+            </div>
           </div>
-          <div className="px-4 py-3.5 border-t border-[#E5E7EB]">
-            <p className="text-[12px] text-[#9CA3AF]">
-              API-sleutels en configuratie worden beheerd in een volgende fase.
-            </p>
+
+          {/* Mirakl */}
+          <div className="bg-white rounded-lg border border-[#E5E7EB]">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
+              <div>
+                <p className="text-[16px] font-semibold text-[#111827]">Mirakl</p>
+                <p className="text-[12px] text-[#9CA3AF]">Mirakl Marketplace API</p>
+              </div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
+                miraklConfigured ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
+              }`}>
+                {miraklConfigured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
+              </span>
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <div>
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Marketplace URL</label>
+                <input
+                  type="url"
+                  value={miraklForm.url}
+                  onChange={e => setMiraklForm(f => ({ ...f, url: e.target.value }))}
+                  placeholder="https://marketplace.example.com"
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">API Key</label>
+                <input
+                  type="password"
+                  value={miraklForm.api_key}
+                  onChange={e => setMiraklForm(f => ({ ...f, api_key: e.target.value }))}
+                  placeholder={miraklConfigured ? '••••••••' : 'Mirakl API key'}
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+              <button
+                onClick={() => handleSaveKanaal('Mirakl', miraklForm)}
+                disabled={savingKanaal === 'Mirakl' || !miraklForm.url}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
+              >
+                {savedKanaal === 'Mirakl' ? <><Check size={13} /> Opgeslagen</> : savingKanaal === 'Mirakl' ? 'Opslaan…' : 'Opslaan'}
+              </button>
+            </div>
+          </div>
+
+          {/* Other channels */}
+          <div className="bg-white rounded-lg border border-[#E5E7EB]">
+            <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
+              <p className="text-[15.5px] font-semibold text-[#111827]">Overige kanalen</p>
+            </div>
+            <div className="divide-y divide-[#F3F4F6]">
+              {[
+                { naam: 'bol.com', beschrijving: 'Retailer API v10' },
+                { naam: 'eBay', beschrijving: 'eBay Fulfillment API' },
+              ].map(k => (
+                <div key={k.naam} className="flex items-center justify-between px-4 py-3.5">
+                  <div>
+                    <p className="text-[15.5px] font-medium text-[#111827]">{k.naam}</p>
+                    <p className="text-[12px] text-[#9CA3AF]">{k.beschrijving}</p>
+                  </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#F9FAFB] text-[#9CA3AF]">
+                    Binnenkort
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
