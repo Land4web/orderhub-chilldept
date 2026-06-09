@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getOrders } from '@/lib/db/orders'
+import { bulkUpdateStatus, bulkMarkAfas } from '@/lib/actions/orders'
 import { supabase } from '@/lib/supabase/client'
-import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE } from '@/lib/styles'
-import { Search } from 'lucide-react'
+import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE, channelStyle } from '@/lib/styles'
+import { Search, ChevronDown, CheckSquare } from 'lucide-react'
 import type { Order, OrderStatus, Kanaal, AfasStatus } from '@/lib/types/index'
 
 function formatDateTime(iso: string) {
@@ -59,6 +60,9 @@ export default function OrdersPage() {
   const [pageSize, setPageSize] = useState(20)
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkWorking, setBulkWorking] = useState(false)
+  const bulkRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getOrders().then(setOrders)
@@ -126,6 +130,34 @@ export default function OrdersPage() {
 
   function resetPage() { setPage(1) }
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (bulkRef.current && !bulkRef.current.contains(e.target as Node)) {
+        setBulkOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  async function handleBulkStatus(status: OrderStatus) {
+    setBulkOpen(false)
+    setBulkWorking(true)
+    await bulkUpdateStatus(Array.from(selected), status)
+    setSelected(new Set())
+    setBulkWorking(false)
+    getOrders().then(setOrders)
+  }
+
+  async function handleBulkAfas() {
+    setBulkOpen(false)
+    setBulkWorking(true)
+    await bulkMarkAfas(Array.from(selected))
+    setSelected(new Set())
+    setBulkWorking(false)
+    getOrders().then(setOrders)
+  }
+
   return (
     <div className="py-7 px-8 max-w-7xl mx-auto">
       <div className="flex items-start justify-between mb-6">
@@ -141,9 +173,42 @@ export default function OrdersPage() {
             Exporteren
           </button>
           {selected.size > 0 && (
-            <button className="inline-flex items-center px-3 py-1.5 text-[15.5px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] transition-colors">
-              Bulkactie ({selected.size})
-            </button>
+            <div ref={bulkRef} className="relative">
+              <button
+                onClick={() => setBulkOpen(o => !o)}
+                disabled={bulkWorking}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[15.5px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] disabled:opacity-60 transition-colors"
+              >
+                {bulkWorking ? 'Bezig…' : `Bulkactie (${selected.size})`}
+                <ChevronDown size={13} />
+              </button>
+              {bulkOpen && (
+                <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-[#E5E7EB] rounded-lg shadow-lg z-20 py-1">
+                  <p className="px-3 py-1.5 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Status wijzigen</p>
+                  {ALL_STATUSES.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => handleBulkStatus(s)}
+                      className="w-full text-left px-3 py-1.5 text-[14px] text-[#374151] hover:bg-[#F9FAFB] transition-colors flex items-center gap-2"
+                    >
+                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-medium ${STATUS_STYLE[s]}`}>
+                        {STATUS_LABEL[s]}
+                      </span>
+                    </button>
+                  ))}
+                  <div className="border-t border-[#F3F4F6] mt-1 pt-1">
+                    <p className="px-3 py-1.5 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide">AFAS</p>
+                    <button
+                      onClick={handleBulkAfas}
+                      className="w-full text-left px-3 py-1.5 text-[14px] text-[#374151] hover:bg-[#F9FAFB] transition-colors flex items-center gap-2"
+                    >
+                      <CheckSquare size={13} className="text-[#16A34A]" />
+                      Markeren als ingevoerd
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -240,7 +305,7 @@ export default function OrdersPage() {
                       <p className="text-[12px] text-[#9CA3AF] mt-0.5">{order.kanaalOrderId}</p>
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${CHANNEL_STYLE[order.kanaal]}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(order.kanaal)}`}>
                         {order.kanaal}
                       </span>
                     </td>

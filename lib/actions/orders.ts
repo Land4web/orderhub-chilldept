@@ -38,3 +38,23 @@ export async function toggleAfasStatus(id: string, newStatus: 'not_entered' | 'e
     })
     .eq('id', id)
 }
+
+export async function bulkUpdateStatus(ids: string[], status: OrderStatus) {
+  const supabase = await createClient()
+  await supabase
+    .from('orders')
+    .update({ status, bijgewerkt_op: new Date().toISOString() })
+    .in('id', ids)
+}
+
+export async function bulkMarkAfas(ids: string[]) {
+  const supabase = await createClient()
+  await supabase
+    .from('orders')
+    .update({
+      afas_status: 'entered',
+      afas_ingevoerd_op: new Date().toISOString(),
+      bijgewerkt_op: new Date().toISOString(),
+    })
+    .in('id', ids)
+}
