@@ -84,9 +84,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-gray-400">
-            Demo accounts: maarten@chill-dept.nl / admin123
-          </p>
         </div>
       </div>
     </div>
