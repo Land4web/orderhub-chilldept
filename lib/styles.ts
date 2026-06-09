@@ -1,4 +1,4 @@
-import type { OrderStatus, Kanaal, SyncStatus } from '@/lib/types'
+import type { OrderStatus, SyncStatus } from '@/lib/types'
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   new: 'Nieuw',
@@ -22,11 +22,15 @@ export const STATUS_STYLE: Record<OrderStatus, string> = {
   failed: 'bg-[#FEF2F2] text-[#EF4444]',
 }
 
-export const CHANNEL_STYLE: Record<Kanaal, string> = {
+export const CHANNEL_STYLE: Record<string, string> = {
   WooCommerce: 'bg-[#F5F3FF] text-[#7C3AED]',
   'bol.com': 'bg-[#EFF6FF] text-[#2563EB]',
   Mirakl: 'bg-[#FFF7ED] text-[#D97706]',
   eBay: 'bg-[#F0FDF4] text-[#059669]',
+}
+export const CHANNEL_STYLE_DEFAULT = 'bg-[#F3F4F6] text-[#6B7280]'
+export function channelStyle(kanaal: string): string {
+  return CHANNEL_STYLE[kanaal] ?? CHANNEL_STYLE_DEFAULT
 }
 
 export const SYNC_STYLE: Record<SyncStatus, string> = {

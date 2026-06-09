@@ -41,7 +41,7 @@ export async function fetchWooCommerceOrders(
   return res.json()
 }
 
-export function mapWCOrder(wc: WCOrder): { order: Omit<Order, 'regels'>; regels: OrderRegel[] } {
+export function mapWCOrder(wc: WCOrder, kanaal = 'WooCommerce'): { order: Omit<Order, 'regels'>; regels: OrderRegel[] } {
   const regels: OrderRegel[] = wc.line_items.map(li => ({
     sku: li.sku || `wc-${wc.number}-${li.name.slice(0, 20).replace(/\s+/g, '-').toLowerCase()}`,
     naam: li.name,
@@ -51,7 +51,7 @@ export function mapWCOrder(wc: WCOrder): { order: Omit<Order, 'regels'>; regels:
   return {
     order: {
       id: `WC-${wc.number}`,
-      kanaal: 'WooCommerce',
+      kanaal,
       kanaalOrderId: wc.number,
       status: STATUS_MAP[wc.status] ?? 'new',
       afasStatus: 'not_entered',

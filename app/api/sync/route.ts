@@ -1,23 +1,11 @@
 import type { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { fetchWooCommerceOrders, mapWCOrder } from '@/lib/sync/woocommerce'
 import { fetchMiraklOrders, mapMiraklOrder } from '@/lib/sync/mirakl'
 
 async function isAuthorized(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return true
-  }
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  return profile?.role === 'admin'
+  return !!(process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`)
 }
 
 async function upsertOrder(
@@ -44,32 +32,10 @@ async function upsertOrder(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ channel: string }> }
-) {
-  const { channel } = await params
-  const kanaalNaam = decodeURIComponent(channel)
-
-  if (!(await isAuthorized(request))) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { data: configRow } = await supabaseAdmin
-    .from('kanaal_config')
-    .select('type, config')
-    .eq('kanaal', kanaalNaam)
-    .single()
-
-  if (!configRow?.config) {
-    return Response.json({ error: `Geen credentials geconfigureerd voor ${kanaalNaam}` }, { status: 400 })
-  }
-
-  const { type, config } = configRow as { type: string; config: Record<string, string> }
+async function syncKanaal(kanaalNaam: string, type: string, config: Record<string, string>) {
   let verwerkt = 0
   let fouten = 0
   const logId = crypto.randomUUID()
-
   try {
     const rawOrders = type === 'woocommerce'
       ? await fetchWooCommerceOrders(config.url, config.consumer_key, config.consumer_secret)
@@ -84,30 +50,46 @@ export async function POST(
           : mapMiraklOrder(raw as any, kanaalNaam)
         await upsertOrder(order, regels)
         verwerkt++
-      } catch {
-        fouten++
-      }
+      } catch { fouten++ }
     }
 
     const bericht = verwerkt > 0 ? `${verwerkt} orders verwerkt` : 'Geen nieuwe orders'
     const status = fouten > 0 && verwerkt === 0 ? 'error' : fouten > 0 ? 'warning' : 'success'
-
     await supabaseAdmin.from('sync_logs').insert({
       id: logId, kanaal: kanaalNaam, type: 'orders', status,
       aantal_verwerkt: verwerkt, aantal_fouten: fouten,
       bericht, uitgevoerd_op: new Date().toISOString(),
     })
-
-    return Response.json({ verwerkt, fouten, bericht, status })
+    return { kanaal: kanaalNaam, verwerkt, fouten, status }
   } catch (err) {
     const bericht = err instanceof Error ? err.message : 'Onbekende fout'
     try {
       await supabaseAdmin.from('sync_logs').insert({
         id: logId, kanaal: kanaalNaam, type: 'orders', status: 'error',
-        aantal_verwerkt: 0, aantal_fouten: 1,
-        bericht, uitgevoerd_op: new Date().toISOString(),
+        aantal_verwerkt: 0, aantal_fouten: 1, bericht,
+        uitgevoerd_op: new Date().toISOString(),
       })
-    } catch { /* ignore logging failure */ }
-    return Response.json({ error: bericht }, { status: 500 })
+    } catch { /* ignore */ }
+    return { kanaal: kanaalNaam, verwerkt: 0, fouten: 1, status: 'error' }
   }
+}
+
+export async function POST(request: NextRequest) {
+  if (!(await isAuthorized(request))) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: kanalen } = await supabaseAdmin
+    .from('kanaal_config')
+    .select('kanaal, type, config')
+
+  if (!kanalen?.length) {
+    return Response.json({ bericht: 'Geen kanalen geconfigureerd' })
+  }
+
+  const results = await Promise.allSettled(
+    kanalen.map(r => syncKanaal(r.kanaal, r.type, r.config as Record<string, string>))
+  )
+
+  return Response.json({ results: results.map(r => r.status === 'fulfilled' ? r.value : { status: 'error' }) })
 }

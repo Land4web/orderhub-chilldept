@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { getSyncLogs } from '@/lib/db/sync-logs'
-import { CHANNEL_STYLE, SYNC_STYLE, SYNC_LABEL } from '@/lib/styles'
+import { getAllKanaalConfigs } from '@/lib/actions/kanaal-config'
+import { channelStyle, SYNC_STYLE, SYNC_LABEL } from '@/lib/styles'
 import { CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
-import type { SyncLog, SyncStatus, Kanaal } from '@/lib/types/index'
+import type { SyncLog, SyncStatus, KanaalConfigRow } from '@/lib/types/index'
 
 function SyncStatusIcon({ status }: { status: SyncStatus }) {
   if (status === 'success') return <CheckCircle size={14} className="text-[#16A34A]" />
@@ -20,12 +21,6 @@ const OVERALL_LABEL: Record<SyncStatus, string> = {
   success: 'Operationeel', warning: 'Waarschuwing', error: 'Fout',
 }
 
-const SYNC_CHANNELS: { kanaal: Kanaal; slug: string }[] = [
-  { kanaal: 'WooCommerce', slug: 'woocommerce' },
-  { kanaal: 'Mirakl', slug: 'mirakl' },
-]
-const ALL_CHANNELS: Kanaal[] = ['WooCommerce', 'bol.com', 'Mirakl', 'eBay']
-
 function formatTime(iso: string) {
   const d = new Date(iso)
   const now = new Date()
@@ -36,45 +31,41 @@ function formatTime(iso: string) {
 
 export default function SynchronisatiePage() {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
+  const [kanalen, setKanalen] = useState<KanaalConfigRow[]>([])
   const [syncing, setSyncing] = useState<Set<string>>(new Set())
   const [syncResults, setSyncResults] = useState<Record<string, string>>({})
 
-  useEffect(() => { getSyncLogs().then(setSyncLogs) }, [])
+  useEffect(() => {
+    getSyncLogs().then(setSyncLogs)
+    getAllKanaalConfigs().then(setKanalen)
+  }, [])
 
-  async function startSync(slug: string) {
-    setSyncing(prev => new Set(prev).add(slug))
-    setSyncResults(prev => ({ ...prev, [slug]: '' }))
+  async function startSync(kanaal: string) {
+    setSyncing(prev => new Set(prev).add(kanaal))
+    setSyncResults(prev => ({ ...prev, [kanaal]: '' }))
     try {
-      const res = await fetch(`/api/sync/${slug}`, { method: 'POST' })
+      const res = await fetch(`/api/sync/${encodeURIComponent(kanaal)}`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
-        setSyncResults(prev => ({ ...prev, [slug]: data.error ?? 'Fout' }))
+        setSyncResults(prev => ({ ...prev, [kanaal]: data.error ?? 'Fout' }))
       } else {
-        setSyncResults(prev => ({ ...prev, [slug]: data.bericht }))
+        setSyncResults(prev => ({ ...prev, [kanaal]: data.bericht }))
         getSyncLogs().then(setSyncLogs)
       }
     } catch {
-      setSyncResults(prev => ({ ...prev, [slug]: 'Verbindingsfout' }))
+      setSyncResults(prev => ({ ...prev, [kanaal]: 'Verbindingsfout' }))
     } finally {
-      setSyncing(prev => { const s = new Set(prev); s.delete(slug); return s })
+      setSyncing(prev => { const s = new Set(prev); s.delete(kanaal); return s })
     }
   }
 
   async function syncAll() {
-    await Promise.all(SYNC_CHANNELS.map(c => startSync(c.slug)))
+    await Promise.all(kanalen.map(k => startSync(k.kanaal)))
   }
 
   const sorted = [...syncLogs].sort(
     (a, b) => new Date(b.uitgevoerdOp).getTime() - new Date(a.uitgevoerdOp).getTime()
   )
-
-  const channelData = ALL_CHANNELS.map(kanaal => {
-    const logs = sorted.filter(l => l.kanaal === kanaal)
-    const overallStatus: SyncStatus = logs.some(l => l.status === 'error')
-      ? 'error' : logs.some(l => l.status === 'warning') ? 'warning' : 'success'
-    const typeRows = TYPES.map(type => ({ type, log: logs.find(l => l.type === type) }))
-    return { kanaal, overallStatus, typeRows }
-  })
 
   const anySync = syncing.size > 0
 
@@ -85,98 +76,103 @@ export default function SynchronisatiePage() {
           <h1 className="text-lg font-semibold text-[#111827]">Synchronisatie</h1>
           <p className="text-base text-[#9CA3AF] mt-0.5">Status van alle kanaalintegraties</p>
         </div>
-        <button
-          onClick={syncAll}
-          disabled={anySync}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[15.5px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] disabled:opacity-60 transition-colors"
-        >
-          {anySync
-            ? <><Loader2 size={12} className="animate-spin" /> Bezig…</>
-            : <><RefreshCw size={12} /> Alles synchroniseren</>
-          }
-        </button>
+        {kanalen.length > 0 && (
+          <button
+            onClick={syncAll}
+            disabled={anySync}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[15.5px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] disabled:opacity-60 transition-colors"
+          >
+            {anySync
+              ? <><Loader2 size={12} className="animate-spin" /> Bezig…</>
+              : <><RefreshCw size={12} /> Alles synchroniseren</>
+            }
+          </button>
+        )}
       </div>
 
-      {/* Per-channel cards grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        {channelData.map(({ kanaal, overallStatus, typeRows }) => {
-          const syncChannel = SYNC_CHANNELS.find(c => c.kanaal === kanaal)
-          const slug = syncChannel?.slug
-          const isSyncing = slug ? syncing.has(slug) : false
-          const result = slug ? syncResults[slug] : undefined
+      {kanalen.length === 0 ? (
+        <div className="bg-white rounded-lg border border-[#E5E7EB] px-4 py-10 text-center">
+          <p className="text-[15.5px] text-[#9CA3AF]">Geen kanalen geconfigureerd</p>
+          <p className="text-[12px] text-[#C4C9D4] mt-1">Voeg kanalen toe via Instellingen → Kanalen</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {kanalen.map(({ kanaal }) => {
+            const logs = sorted.filter(l => l.kanaal === kanaal)
+            const overallStatus: SyncStatus = logs.some(l => l.status === 'error')
+              ? 'error' : logs.some(l => l.status === 'warning') ? 'warning' : 'success'
+            const typeRows = TYPES.map(type => ({ type, log: logs.find(l => l.type === type) }))
+            const isSyncing = syncing.has(kanaal)
+            const result = syncResults[kanaal]
 
-          return (
-            <div key={kanaal} className="bg-white rounded-lg border border-[#E5E7EB]">
-              <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${CHANNEL_STYLE[kanaal]}`}>
-                  {kanaal}
-                </span>
-                <div className="flex items-center gap-2">
-                  {syncChannel && (
+            return (
+              <div key={kanaal} className="bg-white rounded-lg border border-[#E5E7EB]">
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${channelStyle(kanaal)}`}>
+                    {kanaal}
+                  </span>
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => startSync(slug!)}
+                      onClick={() => startSync(kanaal)}
                       disabled={isSyncing}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[12px] font-medium border border-[#E5E7EB] rounded text-[#374151] bg-white hover:bg-[#F9FAFB] disabled:opacity-50 transition-colors"
                     >
-                      {isSyncing
-                        ? <Loader2 size={10} className="animate-spin" />
-                        : <RefreshCw size={10} />
-                      }
+                      {isSyncing ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
                       Sync
                     </button>
-                  )}
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium ${SYNC_STYLE[overallStatus]}`}>
-                    <SyncStatusIcon status={overallStatus} />
-                    {OVERALL_LABEL[overallStatus]}
-                  </span>
-                </div>
-              </div>
-
-              {result !== undefined && result !== '' && (
-                <div className="px-4 py-2 border-b border-[#F3F4F6] text-[12px] text-[#6B7280] bg-[#F9FAFB]">
-                  {result}
-                </div>
-              )}
-
-              <div className="divide-y divide-[#F3F4F6]">
-                {typeRows.map(({ type, log }) => (
-                  <div key={type} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <p className="text-[15.5px] font-medium text-[#111827]">{TYPE_LABEL[type]}</p>
-                      {log ? (
-                        <p className="text-[12px] text-[#9CA3AF] mt-0.5">
-                          {log.aantalVerwerkt > 0 ? `${log.aantalVerwerkt} verwerkt` : ''}
-                          {log.aantalFouten > 0 ? ` · ${log.aantalFouten} fout${log.aantalFouten !== 1 ? 'en' : ''}` : ''}
-                          {log.aantalVerwerkt === 0 && log.aantalFouten === 0 ? log.bericht : ''}
-                        </p>
-                      ) : (
-                        <p className="text-[12px] text-[#9CA3AF] mt-0.5">Niet uitgevoerd</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      {log ? (
-                        <>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${SYNC_STYLE[log.status]}`}>
-                            {SYNC_LABEL[log.status]}
-                          </span>
-                          <p className="text-[12px] text-[#9CA3AF] mt-1">{formatTime(log.uitgevoerdOp)}</p>
-                        </>
-                      ) : (
-                        <>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#F9FAFB] text-[#9CA3AF]">
-                            Overgeslagen
-                          </span>
-                          <p className="text-[12px] text-[#9CA3AF] mt-1">—</p>
-                        </>
-                      )}
-                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium ${SYNC_STYLE[overallStatus]}`}>
+                      <SyncStatusIcon status={overallStatus} />
+                      {OVERALL_LABEL[overallStatus]}
+                    </span>
                   </div>
-                ))}
+                </div>
+
+                {result !== undefined && result !== '' && (
+                  <div className="px-4 py-2 border-b border-[#F3F4F6] text-[12px] text-[#6B7280] bg-[#F9FAFB]">
+                    {result}
+                  </div>
+                )}
+
+                <div className="divide-y divide-[#F3F4F6]">
+                  {typeRows.map(({ type, log }) => (
+                    <div key={type} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="text-[15.5px] font-medium text-[#111827]">{TYPE_LABEL[type]}</p>
+                        {log ? (
+                          <p className="text-[12px] text-[#9CA3AF] mt-0.5">
+                            {log.aantalVerwerkt > 0 ? `${log.aantalVerwerkt} verwerkt` : ''}
+                            {log.aantalFouten > 0 ? ` · ${log.aantalFouten} fout${log.aantalFouten !== 1 ? 'en' : ''}` : ''}
+                            {log.aantalVerwerkt === 0 && log.aantalFouten === 0 ? log.bericht : ''}
+                          </p>
+                        ) : (
+                          <p className="text-[12px] text-[#9CA3AF] mt-0.5">Niet uitgevoerd</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {log ? (
+                          <>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${SYNC_STYLE[log.status]}`}>
+                              {SYNC_LABEL[log.status]}
+                            </span>
+                            <p className="text-[12px] text-[#9CA3AF] mt-1">{formatTime(log.uitgevoerdOp)}</p>
+                          </>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#F9FAFB] text-[#9CA3AF]">
+                              Overgeslagen
+                            </span>
+                            <p className="text-[12px] text-[#9CA3AF] mt-1">—</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

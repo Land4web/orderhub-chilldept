@@ -1,4 +1,11 @@
-export type Kanaal = 'WooCommerce' | 'bol.com' | 'Mirakl' | 'eBay'
+export type Kanaal = string
+export type KanaalType = 'woocommerce' | 'mirakl'
+
+export interface KanaalConfigRow {
+  kanaal: string
+  type: KanaalType
+  config: Record<string, string>
+}
 export type Vervoerder = 'DHL' | 'PostNL' | 'DPD' | 'GLS'
 
 export type OrderStatus =

@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getProfiles, updateUserRole, createUser, deleteUser } from '@/lib/actions/users'
-import { getKanaalConfig, saveKanaalConfig } from '@/lib/actions/kanaal-config'
+import { getAllKanaalConfigs, saveKanaalConfig, deleteKanaalConfig } from '@/lib/actions/kanaal-config'
 import { ROLE_LABELS } from '@/lib/auth'
-import { Users, Settings, Shield, Trash2, Plus, Check } from 'lucide-react'
+import { Users, Settings, Shield, Trash2, Plus, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import type { Role } from '@/lib/auth'
 import type { Profile } from '@/lib/actions/users'
+import type { KanaalConfigRow, KanaalType } from '@/lib/types'
 
 const ROLE_BADGE: Record<Role, string> = {
   admin: 'bg-[#0E2A3C] text-white',
@@ -19,9 +20,153 @@ const ALL_ROLES: Role[] = ['admin', 'employee', 'fulfillment']
 
 const EMPTY_FORM = { email: '', password: '', name: '', initials: '', role: 'employee' as Role }
 
+const EMPTY_WC_CONFIG = { url: '', consumer_key: '', consumer_secret: '' }
+const EMPTY_MIRAKL_CONFIG = { url: '', api_key: '' }
+
+const ADAPTER_LABEL: Record<KanaalType, string> = {
+  woocommerce: 'WooCommerce',
+  mirakl: 'Mirakl',
+}
+
+function KanaalCard({
+  row,
+  onSaved,
+  onDeleted,
+}: {
+  row: KanaalConfigRow
+  onSaved: () => void
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState<Record<string, string>>(
+    row.type === 'woocommerce' ? { ...EMPTY_WC_CONFIG } : { ...EMPTY_MIRAKL_CONFIG }
+  )
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const configured = !!(row.config?.url && (
+    row.type === 'woocommerce' ? row.config.consumer_key : row.config.api_key
+  ))
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    const result = await saveKanaalConfig(row.kanaal, row.type, form)
+    setSaving(false)
+    if (!result.error) {
+      setSaved(true)
+      onSaved()
+      setTimeout(() => setSaved(false), 2500)
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Weet je zeker dat je "${row.kanaal}" wil verwijderen?`)) return
+    setDeleting(true)
+    await deleteKanaalConfig(row.kanaal)
+    onDeleted()
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-[#E5E7EB]">
+      <div className="flex items-center justify-between px-4 py-3.5">
+        <div>
+          <p className="text-[15.5px] font-semibold text-[#111827]">{row.kanaal}</p>
+          <p className="text-[12px] text-[#9CA3AF]">{ADAPTER_LABEL[row.type]} adapter</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
+            configured ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
+          }`}>
+            {configured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
+          </span>
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="p-1.5 text-[#9CA3AF] hover:text-[#374151] transition-colors"
+          >
+            {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] disabled:opacity-40 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <form onSubmit={handleSave} className="px-4 pb-4 pt-1 border-t border-[#F3F4F6] space-y-3">
+          <div>
+            <label className="text-[12px] text-[#6B7280] font-medium block mb-1">
+              {row.type === 'woocommerce' ? 'Store URL' : 'Marketplace URL'}
+            </label>
+            <input
+              type="url"
+              value={form.url}
+              onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+              placeholder={configured ? row.config.url : 'https://...'}
+              className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+            />
+          </div>
+
+          {row.type === 'woocommerce' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Key</label>
+                <input
+                  type="password"
+                  value={form.consumer_key}
+                  onChange={e => setForm(f => ({ ...f, consumer_key: e.target.value }))}
+                  placeholder={configured ? '••••••••' : 'ck_...'}
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Secret</label>
+                <input
+                  type="password"
+                  value={form.consumer_secret}
+                  onChange={e => setForm(f => ({ ...f, consumer_secret: e.target.value }))}
+                  placeholder={configured ? '••••••••' : 'cs_...'}
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-[12px] text-[#6B7280] font-medium block mb-1">API Key</label>
+              <input
+                type="password"
+                value={form.api_key}
+                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
+                placeholder={configured ? '••••••••' : 'Mirakl API key'}
+                className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving || !form.url}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
+          >
+            {saved ? <><Check size={13} /> Opgeslagen</> : saving ? 'Opslaan…' : 'Opslaan'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+const EMPTY_NIEUW = { naam: '', type: 'mirakl' as KanaalType }
+
 export default function InstellingenPage() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'gebruikers' | 'account' | 'kanalen'>('gebruikers')
+
+  // Gebruikers
   const [team, setTeam] = useState<Profile[]>([])
   const [teamLoading, setTeamLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -30,12 +175,13 @@ export default function InstellingenPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const [wcForm, setWcForm] = useState({ url: '', consumer_key: '', consumer_secret: '' })
-  const [miraklForm, setMiraklForm] = useState({ url: '', api_key: '' })
-  const [wcConfigured, setWcConfigured] = useState(false)
-  const [miraklConfigured, setMiraklConfigured] = useState(false)
-  const [savingKanaal, setSavingKanaal] = useState<string | null>(null)
-  const [savedKanaal, setSavedKanaal] = useState<string | null>(null)
+  // Kanalen
+  const [kanalen, setKanalen] = useState<KanaalConfigRow[]>([])
+  const [kanalenLoading, setKanalenLoading] = useState(false)
+  const [nieuwOpen, setNieuwOpen] = useState(false)
+  const [nieuwForm, setNieuwForm] = useState(EMPTY_NIEUW)
+  const [nieuwError, setNieuwError] = useState('')
+  const [nieuwSubmitting, setNieuwSubmitting] = useState(false)
 
   function loadTeam() {
     setTeamLoading(true)
@@ -45,34 +191,22 @@ export default function InstellingenPage() {
     })
   }
 
+  function loadKanalen() {
+    setKanalenLoading(true)
+    getAllKanaalConfigs().then(rows => {
+      setKanalen(rows)
+      setKanalenLoading(false)
+    })
+  }
+
   useEffect(() => {
     if (user?.role !== 'admin') return
     loadTeam()
   }, [user?.role])
 
   useEffect(() => {
-    if (activeTab !== 'kanalen') return
-    getKanaalConfig('WooCommerce').then(cfg => {
-      if (cfg.url) setWcForm(f => ({ ...f, url: cfg.url }))
-      setWcConfigured(!!(cfg.url && cfg.consumer_key))
-    })
-    getKanaalConfig('Mirakl').then(cfg => {
-      if (cfg.url) setMiraklForm(f => ({ ...f, url: cfg.url }))
-      setMiraklConfigured(!!(cfg.url && cfg.api_key))
-    })
+    if (activeTab === 'kanalen') loadKanalen()
   }, [activeTab])
-
-  async function handleSaveKanaal(kanaal: string, config: Record<string, string>) {
-    setSavingKanaal(kanaal)
-    const result = await saveKanaalConfig(kanaal, config)
-    setSavingKanaal(null)
-    if (!result.error) {
-      setSavedKanaal(kanaal)
-      if (kanaal === 'WooCommerce') setWcConfigured(true)
-      if (kanaal === 'Mirakl') setMiraklConfigured(true)
-      setTimeout(() => setSavedKanaal(null), 2500)
-    }
-  }
 
   async function handleRoleChange(id: string, role: Role) {
     setTeam(prev => prev.map(m => m.id === id ? { ...m, role } : m))
@@ -101,8 +235,26 @@ export default function InstellingenPage() {
     setDeletingId(id)
     const { error } = await deleteUser(id)
     setDeletingId(null)
-    if (!error) {
-      setTeam(prev => prev.filter(m => m.id !== id))
+    if (!error) setTeam(prev => prev.filter(m => m.id !== id))
+  }
+
+  async function handleNieuwKanaal(e: React.FormEvent) {
+    e.preventDefault()
+    setNieuwError('')
+    if (!nieuwForm.naam.trim()) { setNieuwError('Naam is verplicht'); return }
+    if (kanalen.some(k => k.kanaal.toLowerCase() === nieuwForm.naam.trim().toLowerCase())) {
+      setNieuwError('Een kanaal met deze naam bestaat al')
+      return
+    }
+    setNieuwSubmitting(true)
+    const result = await saveKanaalConfig(nieuwForm.naam.trim(), nieuwForm.type, {})
+    setNieuwSubmitting(false)
+    if (result.error) {
+      setNieuwError(result.error)
+    } else {
+      setNieuwOpen(false)
+      setNieuwForm(EMPTY_NIEUW)
+      loadKanalen()
     }
   }
 
@@ -164,7 +316,6 @@ export default function InstellingenPage() {
             </button>
           </div>
 
-          {/* Add user form */}
           {addOpen && (
             <form onSubmit={handleAdd} className="px-4 py-4 border-b border-[#E5E7EB] bg-[#F9FAFB]">
               <div className="grid grid-cols-2 gap-3 mb-3">
@@ -224,9 +375,7 @@ export default function InstellingenPage() {
                   </select>
                 </div>
               </div>
-              {addError && (
-                <p className="text-[13px] text-[#EF4444] mb-3">{addError}</p>
-              )}
+              {addError && <p className="text-[13px] text-[#EF4444] mb-3">{addError}</p>}
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -246,7 +395,6 @@ export default function InstellingenPage() {
             </form>
           )}
 
-          {/* User list */}
           <div className="divide-y divide-[#F3F4F6]">
             {teamLoading ? (
               <div className="px-4 py-6 text-center text-[15px] text-[#9CA3AF]">Laden…</div>
@@ -318,128 +466,82 @@ export default function InstellingenPage() {
       {/* Kanalen */}
       {activeTab === 'kanalen' && (
         <div className="space-y-3.5">
-          {/* WooCommerce */}
-          <div className="bg-white rounded-lg border border-[#E5E7EB]">
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
-              <div>
-                <p className="text-[16px] font-semibold text-[#111827]">WooCommerce</p>
-                <p className="text-[12px] text-[#9CA3AF]">REST API koppeling</p>
-              </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
-                wcConfigured ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
-              }`}>
-                {wcConfigured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
-              </span>
-            </div>
-            <div className="px-4 py-4 space-y-3">
-              <div>
-                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Store URL</label>
-                <input
-                  type="url"
-                  value={wcForm.url}
-                  onChange={e => setWcForm(f => ({ ...f, url: e.target.value }))}
-                  placeholder="https://jouwshop.nl"
-                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
-                />
-              </div>
+          <div className="flex items-center justify-between">
+            <p className="text-[15.5px] font-medium text-[#374151]">
+              {kanalen.length} {kanalen.length === 1 ? 'kanaal' : 'kanalen'} geconfigureerd
+            </p>
+            <button
+              onClick={() => { setNieuwOpen(o => !o); setNieuwError('') }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[15px] font-medium bg-[#0E2A3C] text-white rounded-md hover:bg-[#1a3f5c] transition-colors"
+            >
+              <Plus size={13} />
+              Kanaal toevoegen
+            </button>
+          </div>
+
+          {/* Nieuw kanaal form */}
+          {nieuwOpen && (
+            <form onSubmit={handleNieuwKanaal} className="bg-white rounded-lg border border-[#E5E7EB] px-4 py-4 space-y-3">
+              <p className="text-[15.5px] font-semibold text-[#111827]">Nieuw kanaal</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Key</label>
+                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Kanaalnaam</label>
                   <input
-                    type="password"
-                    value={wcForm.consumer_key}
-                    onChange={e => setWcForm(f => ({ ...f, consumer_key: e.target.value }))}
-                    placeholder={wcConfigured ? '••••••••' : 'ck_...'}
+                    type="text"
+                    required
+                    value={nieuwForm.naam}
+                    onChange={e => setNieuwForm(f => ({ ...f, naam: e.target.value }))}
+                    placeholder="bijv. bol.com, Cdiscount"
                     className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Consumer Secret</label>
-                  <input
-                    type="password"
-                    value={wcForm.consumer_secret}
-                    onChange={e => setWcForm(f => ({ ...f, consumer_secret: e.target.value }))}
-                    placeholder={wcConfigured ? '••••••••' : 'cs_...'}
-                    className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
-                  />
+                  <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Adapter</label>
+                  <select
+                    value={nieuwForm.type}
+                    onChange={e => setNieuwForm(f => ({ ...f, type: e.target.value as KanaalType }))}
+                    className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white text-[#374151]"
+                  >
+                    <option value="mirakl">Mirakl</option>
+                    <option value="woocommerce">WooCommerce</option>
+                  </select>
                 </div>
               </div>
-              <button
-                onClick={() => handleSaveKanaal('WooCommerce', wcForm)}
-                disabled={savingKanaal === 'WooCommerce' || !wcForm.url}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
-              >
-                {savedKanaal === 'WooCommerce' ? <><Check size={13} /> Opgeslagen</> : savingKanaal === 'WooCommerce' ? 'Opslaan…' : 'Opslaan'}
-              </button>
-            </div>
-          </div>
+              {nieuwError && <p className="text-[13px] text-[#EF4444]">{nieuwError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={nieuwSubmitting}
+                  className="px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] transition-colors disabled:opacity-50"
+                >
+                  {nieuwSubmitting ? 'Aanmaken…' : 'Aanmaken'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNieuwOpen(false); setNieuwError('') }}
+                  className="px-4 py-1.5 text-[15px] font-medium border border-[#E5E7EB] rounded-md text-[#374151] hover:bg-[#F3F4F6] transition-colors"
+                >
+                  Annuleren
+                </button>
+              </div>
+            </form>
+          )}
 
-          {/* Mirakl */}
-          <div className="bg-white rounded-lg border border-[#E5E7EB]">
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E7EB]">
-              <div>
-                <p className="text-[16px] font-semibold text-[#111827]">Mirakl</p>
-                <p className="text-[12px] text-[#9CA3AF]">Mirakl Marketplace API</p>
-              </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${
-                miraklConfigured ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#F9FAFB] text-[#9CA3AF]'
-              }`}>
-                {miraklConfigured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
-              </span>
+          {kanalenLoading ? (
+            <div className="bg-white rounded-lg border border-[#E5E7EB] px-4 py-6 text-center text-[15px] text-[#9CA3AF]">Laden…</div>
+          ) : kanalen.length === 0 ? (
+            <div className="bg-white rounded-lg border border-[#E5E7EB] px-4 py-8 text-center">
+              <p className="text-[15.5px] text-[#9CA3AF]">Nog geen kanalen toegevoegd</p>
+              <p className="text-[12px] text-[#C4C9D4] mt-1">Klik op &quot;Kanaal toevoegen&quot; om te beginnen</p>
             </div>
-            <div className="px-4 py-4 space-y-3">
-              <div>
-                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">Marketplace URL</label>
-                <input
-                  type="url"
-                  value={miraklForm.url}
-                  onChange={e => setMiraklForm(f => ({ ...f, url: e.target.value }))}
-                  placeholder="https://marketplace.example.com"
-                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={miraklForm.api_key}
-                  onChange={e => setMiraklForm(f => ({ ...f, api_key: e.target.value }))}
-                  placeholder={miraklConfigured ? '••••••••' : 'Mirakl API key'}
-                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
-                />
-              </div>
-              <button
-                onClick={() => handleSaveKanaal('Mirakl', miraklForm)}
-                disabled={savingKanaal === 'Mirakl' || !miraklForm.url}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] disabled:opacity-50 transition-colors"
-              >
-                {savedKanaal === 'Mirakl' ? <><Check size={13} /> Opgeslagen</> : savingKanaal === 'Mirakl' ? 'Opslaan…' : 'Opslaan'}
-              </button>
-            </div>
-          </div>
-
-          {/* Other channels */}
-          <div className="bg-white rounded-lg border border-[#E5E7EB]">
-            <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
-              <p className="text-[15.5px] font-semibold text-[#111827]">Overige kanalen</p>
-            </div>
-            <div className="divide-y divide-[#F3F4F6]">
-              {[
-                { naam: 'bol.com', beschrijving: 'Retailer API v10' },
-                { naam: 'eBay', beschrijving: 'eBay Fulfillment API' },
-              ].map(k => (
-                <div key={k.naam} className="flex items-center justify-between px-4 py-3.5">
-                  <div>
-                    <p className="text-[15.5px] font-medium text-[#111827]">{k.naam}</p>
-                    <p className="text-[12px] text-[#9CA3AF]">{k.beschrijving}</p>
-                  </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#F9FAFB] text-[#9CA3AF]">
-                    Binnenkort
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          ) : kanalen.map(row => (
+            <KanaalCard
+              key={row.kanaal}
+              row={row}
+              onSaved={loadKanalen}
+              onDeleted={loadKanalen}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -46,7 +46,7 @@ export async function fetchMiraklOrders(url: string, apiKey: string): Promise<Mi
   return data.orders ?? []
 }
 
-export function mapMiraklOrder(m: MiraklOrder): { order: Omit<Order, 'regels'>; regels: OrderRegel[] } {
+export function mapMiraklOrder(m: MiraklOrder, kanaal = 'Mirakl'): { order: Omit<Order, 'regels'>; regels: OrderRegel[] } {
   const addr = m.shipping_address
   const regels: OrderRegel[] = m.order_lines.map(li => ({
     sku: li.offer_sku,
@@ -57,7 +57,7 @@ export function mapMiraklOrder(m: MiraklOrder): { order: Omit<Order, 'regels'>; 
   return {
     order: {
       id: `MIR-${m.order_id}`,
-      kanaal: 'Mirakl',
+      kanaal,
       kanaalOrderId: m.order_id,
       status: STATUS_MAP[m.order_state] ?? 'new',
       afasStatus: 'not_entered',

@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chill-Dept Order Hub — Prototype</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: #F8FAFC;
+    color: #111827;
+    display: flex;
+    height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #fff;
+    border-right: 1px solid #E5E7EB;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0; top: 0;
+  }
+
+  .sidebar-logo {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #E5E7EB;
+  }
+
+  /* ── Login ── */
+  .login-screen {
+    position: fixed;
+    inset: 0;
+    background: url('login-bg.webp') center center / cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .login-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(14, 42, 60, 0.45);
+  }
+  .login-box {
+    background: rgba(255,255,255,0.97);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    padding: 40px 36px;
+    width: 380px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .login-logo { margin-bottom: 28px; }
+  .login-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: #9CA3AF; margin-bottom: 24px; }
+  .login-label { font-size: 12.5px; font-weight: 500; color: #374151; margin-bottom: 5px; display: block; }
+  .login-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 7px;
+    font-size: 14px;
+    outline: none;
+    color: #111827;
+    margin-bottom: 14px;
+  }
+  .login-input:focus { border-color: #E8A000; }
+
+  /* ── Profiel balk onderaan sidebar ── */
+  .sidebar-profile {
+    padding: 12px 14px;
+    border-top: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #E8A000;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-name { font-size: 12.5px; font-weight: 500; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-role { font-size: 11px; color: #9CA3AF; }
+  .profile-logout {
+    color: #9CA3AF;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    border: none;
+    background: none;
+    flex-shrink: 0;
+  }
+  .profile-logout:hover { color: #EF4444; background: #FEF2F2; }
+
+  .sidebar-nav { flex: 1; padding: 8px; overflow-y: auto; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #6B7280;
+    font-size: 14px;
+    font-weight: 450;
+    transition: all 0.1s;
+    margin-bottom: 1px;
+    text-decoration: none;
+    user-select: none;
+  }
+
+  .nav-item:hover { background: #F3F4F6; color: #111827; }
+  .nav-item.active { background: #E8A000; color: #fff; }
+
+  .nav-item svg { flex-shrink: 0; opacity: 0.8; }
+  .nav-item.active svg { opacity: 1; }
+
+  .sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #E5E7EB;
+    font-size: 12px;
+    color: #D1D5DB;
+  }
+
+  /* ── Main ── */
+  .main {
+    margin-left: 220px;
+    flex: 1;
+    overflow-y: auto;
+    height: 100vh;
+  }
+
+  .page { display: none; padding: 28px 32px; }
+  .page.active { display: block; }
+
+  /* ── Page header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-title { font-size: 16px; font-weight: 600; color: #111827; }
+  .page-subtitle { font-size: 13px; color: #9CA3AF; margin-top: 2px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.1s;
+  }
+
+  .btn-primary { background: #E8A000; color: #fff; }
+  .btn-primary:hover { background: #d49200; }
+  .btn-secondary { background: #fff; color: #374151; border: 1px solid #E5E7EB; }
+  .btn-secondary:hover { background: #F9FAFB; }
+
+  /* ── KPI cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+
+  .kpi-label { font-size: 12.5px; color: #6B7280; font-weight: 500; margin-bottom: 8px; }
+  .kpi-value { font-size: 24px; font-weight: 600; color: #111827; line-height: 1; margin-bottom: 6px; }
+  .kpi-delta { font-size: 12px; color: #6B7280; }
+  .kpi-delta.up { color: #22C55E; }
+  .kpi-delta.down { color: #EF4444; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title { font-size: 14px; font-weight: 600; }
+  .card-body { padding: 0; }
+
+  /* ── Dashboard grid ── */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 16px;
+    font-size: 13.5px;
+    border-bottom: 1px solid #F3F4F6;
+    color: #374151;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #F9FAFB; }
+
+  .td-mono { font-family: 'SF Mono', monospace; font-size: 12.5px; color: #6B7280; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .badge-new       { background: #EFF6FF; color: #3B82F6; }
+  .badge-processing{ background: #FFF7ED; color: #F59E0B; }
+  .badge-ready     { background: #F0FDF4; color: #22C55E; border: 1px solid #BBF7D0; }
+  .badge-shipped   { background: #F5F3FF; color: #8B5CF6; }
+  .badge-completed { background: #F0FDF4; color: #16A34A; }
+  .badge-cancelled { background: #F9FAFB; color: #9CA3AF; }
+  .badge-returned  { background: #FFF7ED; color: #EA580C; }
+  .badge-failed    { background: #FEF2F2; color: #EF4444; }
+
+  .badge-afas-ok   { background: #F0FDF4; color: #16A34A; }
+  .badge-afas-not  { background: #F9FAFB; color: #9CA3AF; }
+  .badge-afas-rev  { background: #FEF2F2; color: #EF4444; }
+
+  .badge-woo  { background: #F5F3FF; color: #7C3AED; }
+  .badge-bol  { background: #EFF6FF; color: #2563EB; }
+  .badge-mir  { background: #FFF7ED; color: #D97706; }
+  .badge-ebay { background: #F0FDF4; color: #059669; }
+
+  .badge-sync-ok  { background: #F0FDF4; color: #16A34A; }
+  .badge-sync-warn{ background: #FFFBEB; color: #D97706; }
+  .badge-sync-err { background: #FEF2F2; color: #EF4444; }
+
+  /* ── Channel dot ── */
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+  }
+
+  /* ── Actiecentrum items ── */
+  .action-list { list-style: none; }
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid #F3F4F6;
+    cursor: pointer;
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-item:hover { background: #F9FAFB; }
+
+  .action-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .action-title { font-size: 13.5px; font-weight: 500; margin-bottom: 2px; }
+  .action-sub { font-size: 12.5px; color: #9CA3AF; }
+
+  /* ── Bar chart (CSS) ── */
+  .bar-chart { padding: 18px 18px 0; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .bar-label { width: 90px; font-size: 12.5px; color: #6B7280; text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: #F3F4F6; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-value { width: 50px; font-size: 12.5px; color: #374151; font-weight: 500; }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-input {
+    padding: 6px 11px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 13.5px;
+    background: #fff;
+    color: #374151;
+    outline: none;
+    width: 200px;
+  }
+
+  .filter-select {
+    padding: 6px 11px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 13.5px;
+    background: #fff;
+    color: #374151;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* ── Pagination ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid #E5E7EB;
+    font-size: 13px;
+    color: #6B7280;
+  }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* ── Sync status row ── */
+  .sync-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .sync-kanaal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+  }
+
+  .sync-kanaal-name { font-size: 13px; font-weight: 600; }
+  .sync-last { font-size: 11px; color: #9CA3AF; }
+
+  .sync-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 18px;
+    border-top: 1px solid #F3F4F6;
+  }
+
+  .sync-type { font-size: 13px; color: #374151; }
+  .sync-meta { font-size: 12px; color: #9CA3AF; }
+
+  /* ── Inventory ── */
+  .stock-bar { width: 80px; height: 5px; background: #F3F4F6; border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .stock-fill { height: 100%; border-radius: 3px; }
+
+  /* ── Checkbox ── */
+  input[type="checkbox"] { cursor: pointer; accent-color: #E8A000; }
+
+  /* ── Order detail ── */
+  .order-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  .detail-field { margin-bottom: 14px; }
+  .detail-field-label { font-size: 12px; color: #9CA3AF; margin-bottom: 3px; }
+  .detail-field-value { font-size: 14px; color: #111827; font-weight: 450; }
+
+  .timeline { list-style: none; }
+  .timeline-item {
+    display: flex;
+    gap: 12px;
+    padding-bottom: 18px;
+    position: relative;
+  }
+  .timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 22px;
+    bottom: 0;
+    width: 1px;
+    background: #E5E7EB;
+  }
+  .timeline-dot {
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    border: 2px solid #E5E7EB;
+    background: #fff;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .timeline-dot.active { border-color: #E8A000; background: #E8A000; }
+  .timeline-dot.green { border-color: #22C55E; background: #22C55E; }
+  .timeline-dot.orange { border-color: #F59E0B; background: #F59E0B; }
+  .timeline-content { flex: 1; }
+  .timeline-title { font-size: 13.5px; font-weight: 500; margin-bottom: 2px; }
+  .timeline-meta { font-size: 12px; color: #9CA3AF; }
+
+  .inline-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .inline-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    color: #111827;
+  }
+  .inline-select {
+    padding: 7px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    color: #111827;
+    cursor: pointer;
+  }
+
+  .status-select {
+    padding: 5px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    background: #fff;
+    color: #111827;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .breadcrumb {
+    font-size: 13px;
+    color: #9CA3AF;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .breadcrumb a { color: #6B7280; cursor: pointer; text-decoration: none; }
+  .breadcrumb a:hover { color: #111827; }
+
+  .afas-block {
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    margin-bottom: 12px;
+  }
+
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: #F0F9FF; }
+
+  /* ── Responsief ── */
+  .mobile-topbar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 50;
+  }
+  .hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: #374151;
+    border-radius: 6px;
+    line-height: 0;
+    flex-shrink: 0;
+  }
+  .hamburger-btn:hover { background: #F3F4F6; }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 60;
+  }
+  .sidebar-overlay.open { display: block; }
+
+  .rapportages-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Tablet (≤ 1024px) ── */
+  @media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .order-detail-grid { grid-template-columns: 1fr; }
+    .sync-grid { grid-template-columns: 1fr; }
+    .rapportages-grid { grid-template-columns: 1fr; }
+    .page { padding: 20px 24px; }
+  }
+
+  /* ── Mobiel (≤ 768px) ── */
+  @media (max-width: 768px) {
+    .mobile-topbar { display: flex; }
+
+    body { flex-direction: column; height: auto; min-height: 100vh; }
+
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 70;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .main {
+      margin-left: 0;
+      padding-top: 52px;
+      height: auto;
+      min-height: 100vh;
+    }
+
+    .page { padding: 14px 16px; }
+
+    .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+
+    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .order-detail-grid { grid-template-columns: 1fr; }
+    .sync-grid { grid-template-columns: 1fr; }
+    .rapportages-grid { grid-template-columns: 1fr; }
+
+    table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+
+    .filters { flex-direction: column; align-items: stretch; }
+    .filter-input { width: 100%; }
+    .filter-select { width: 100%; }
+
+    .login-box { width: calc(100vw - 32px); max-width: 380px; padding: 28px 20px; }
+
+    .detail-actions { flex-wrap: wrap; gap: 6px; }
+
+    .bar-label { width: 75px; font-size: 11.5px; }
+
+    .pagination { flex-direction: column; gap: 10px; align-items: flex-start; }
+  }
+
+  /* ── Klein mobiel (≤ 480px) ── */
+  @media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr !important; }
+    .kpi-value { font-size: 20px; }
+    .page { padding: 12px; }
+  }
+
+  /* ── Rollen ── */
+  .nav-item[data-page="fulfillment-portal"] { display: none; }
+  body.role-fulfillment .nav-item { display: none; }
+  body.role-fulfillment .nav-item[data-page="fulfillment-portal"] { display: flex; }
+  body.role-fulfillment .sidebar-footer { display: none; }
+
+  .fp-tt-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #16A34A;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Mobiele topbar ── -->
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu openen">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <svg width="44" height="32" viewBox="0 0 77 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M58.5721 56.0033H4.98677C4.33164 56.0032 3.68295 55.8755 3.07776 55.6277C2.47256 55.3798 1.92271 55.0165 1.45962 54.5586C0.99653 54.1007 0.629273 53.5571 0.378827 52.9589C0.128381 52.3607 -0.000345159 51.7196 6.95066e-07 51.0722V4.92777C0.000175227 3.62089 0.525621 2.3676 1.46078 1.4435C2.39595 0.519402 3.66425 0.000172568 4.98677 1.00935e-07H58.5721C59.4485 -0.000175167 60.3095 0.227908 61.0682 0.661267C61.827 1.09463 62.4568 1.71795 62.8941 2.46844L76.3358 25.539C76.7711 26.2871 77.0002 27.1348 77.0002 27.9977C77.0002 28.8606 76.7711 29.7084 76.3358 30.4564L62.8947 53.527C62.4585 54.2791 61.829 54.9042 61.0701 55.3389C60.3111 55.7737 59.4494 56.0029 58.5721 56.0033Z" fill="#0E2A3C"/>
+    <path d="M40.1061 19.0919H37.1421V34.1028H40.1061V19.0919Z" fill="#E6DCCF"/>
+    <path d="M49.8018 31.1745V32.8897C49.8018 33.2109 49.6727 33.519 49.4429 33.7461C49.213 33.9732 48.9013 34.1008 48.5762 34.1008H42.5093V19.0899H45.4713V31.1719H49.7999L49.8018 31.1745Z" fill="#E6DCCF"/>
+    <path d="M58.6734 31.1745V32.8897C58.6734 33.2109 58.5443 33.519 58.3144 33.7461C58.0846 33.9732 57.7728 34.1008 57.4478 34.1008H51.3809V19.0899H54.3429V31.1719H58.6721L58.6734 31.1745Z" fill="#E6DCCF"/>
+    <path d="M34.6373 19.0919V34.1028H31.6753V28.0615H28.8271V34.1028H27.0914C26.7663 34.1028 26.4545 33.9752 26.2247 33.7481C25.9948 33.521 25.8657 33.2129 25.8657 32.8917V19.0919H28.8278V25.1332H31.6746V19.0919H34.6373Z" fill="#E6DCCF"/>
+    <path d="M21.4608 19.1031H16.6307C16.3859 19.0955 16.142 19.1356 15.9128 19.2211C15.6837 19.3066 15.4739 19.4359 15.2953 19.6016C15.1168 19.7673 14.973 19.9661 14.8723 20.1867C14.7715 20.4073 14.7157 20.6454 14.708 20.8873C14.708 20.9335 14.708 20.9796 14.708 21.0258V32.0996C14.7156 32.6292 14.9358 33.1341 15.32 33.5033C15.7043 33.8725 16.2212 34.0758 16.7571 34.0685H21.318C21.5834 34.0741 21.8472 34.0279 22.0946 33.9326C22.3419 33.8373 22.5678 33.6948 22.7593 33.5132C22.9509 33.3317 23.1044 33.1146 23.211 32.8744C23.3177 32.6342 23.3754 32.3755 23.3809 32.1133V28.8676H20.6281V31.2664H17.4607V22.2077H20.6255V24.7958H23.3796V21.0258C23.3911 20.7849 23.3544 20.544 23.2717 20.317C23.189 20.0901 23.0619 19.8814 22.8976 19.703C22.7333 19.5246 22.5351 19.3799 22.3142 19.2772C22.0933 19.1745 21.8541 19.1158 21.6102 19.1044C21.5606 19.1018 21.5108 19.1014 21.4608 19.1031Z" fill="#E6DCCF"/>
+    <path d="M21.3326 36.0151H14.6982V50.9584H21.4741C21.7189 50.966 21.9628 50.926 22.1919 50.8404C22.4211 50.7549 22.6309 50.6256 22.8094 50.4599C22.988 50.2942 23.1318 50.0954 23.2325 49.8748C23.3333 49.6542 23.3891 49.4162 23.3968 49.1742C23.3968 49.1281 23.3968 49.0819 23.3968 49.0357V37.9833C23.3888 37.4533 23.1681 36.9481 22.7832 36.5789C22.3983 36.2097 21.8808 36.0066 21.3444 36.0145L21.3326 36.0151ZM20.5769 48.2083H17.4128V38.771H20.5776L20.5769 48.2083Z" fill="#E6DCCF"/>
+    <path d="M50.4025 38.9109V50.9799H53.404V38.9109H56.7103V36.0366H47.0962V38.9109H50.4025Z" fill="#E6DCCF"/>
+    <path d="M58.6734 48.3287H55.9878V50.9825H57.4458C57.7708 50.9825 58.0826 50.8549 58.3124 50.6277C58.5423 50.4006 58.6714 50.0926 58.6714 49.7713V48.3287H58.6734Z" fill="#E6DCCF"/>
+    <path d="M32.8136 44.424C33.7279 44.424 34.2914 43.8458 34.2914 42.7329V38.0055C34.2837 37.4759 34.0636 36.971 33.6794 36.6018C33.2951 36.2326 32.7782 36.0293 32.2423 36.0366H27.3786C27.1239 36.0162 26.8677 36.0496 26.627 36.1346C26.3864 36.2196 26.1667 36.3541 25.9827 36.5294C25.7987 36.7046 25.6545 36.9166 25.5597 37.1511C25.4649 37.3856 25.4217 37.6374 25.4329 37.8897L25.4572 49.2887C25.4413 49.5169 25.4754 49.7459 25.5573 49.9599C25.6392 50.1738 25.767 50.3678 25.9319 50.5284C26.0967 50.689 26.2948 50.8125 26.5125 50.8905C26.7301 50.9684 26.9623 50.9989 27.193 50.9799H32.3746C33.4765 50.9799 34.2032 50.0764 34.2032 48.8718V48.2064H28.4107V44.4221H32.815L32.8136 44.424ZM28.2771 41.899V38.7717H31.4419V41.899H28.2771Z" fill="#E6DCCF"/>
+    <path d="M43.2416 36.0346H36.3223V51.0456H39.2843V46.1022H43.8261C44.7358 46.1022 45.2992 45.5213 45.2992 44.4065V38.0074C45.2911 37.4767 45.0699 36.9709 44.6844 36.6013C44.2989 36.2317 43.7806 36.0286 43.2436 36.0366L43.2416 36.0346ZM42.4557 43.5739H39.2909V38.7736H42.4557V43.5739Z" fill="#E6DCCF"/>
+  </svg>
+  <div style="width:32px"></div>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ════════════════════════════════ SIDEBAR ═══════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg width="52" height="38" viewBox="0 0 77 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M58.5721 56.0033H4.98677C4.33164 56.0032 3.68295 55.8755 3.07776 55.6277C2.47256 55.3798 1.92271 55.0165 1.45962 54.5586C0.99653 54.1007 0.629273 53.5571 0.378827 52.9589C0.128381 52.3607 -0.000345159 51.7196 6.95066e-07 51.0722V4.92777C0.000175227 3.62089 0.525621 2.3676 1.46078 1.4435C2.39595 0.519402 3.66425 0.000172568 4.98677 1.00935e-07H58.5721C59.4485 -0.000175167 60.3095 0.227908 61.0682 0.661267C61.827 1.09463 62.4568 1.71795 62.8941 2.46844L76.3358 25.539C76.7711 26.2871 77.0002 27.1348 77.0002 27.9977C77.0002 28.8606 76.7711 29.7084 76.3358 30.4564L62.8947 53.527C62.4585 54.2791 61.829 54.9042 61.0701 55.3389C60.3111 55.7737 59.4494 56.0029 58.5721 56.0033Z" fill="#0E2A3C"/>
+      <path d="M40.1061 19.0919H37.1421V34.1028H40.1061V19.0919Z" fill="#E6DCCF"/>
+      <path d="M49.8018 31.1745V32.8897C49.8018 33.2109 49.6727 33.519 49.4429 33.7461C49.213 33.9732 48.9013 34.1008 48.5762 34.1008H42.5093V19.0899H45.4713V31.1719H49.7999L49.8018 31.1745Z" fill="#E6DCCF"/>
+      <path d="M58.6734 31.1745V32.8897C58.6734 33.2109 58.5443 33.519 58.3144 33.7461C58.0846 33.9732 57.7728 34.1008 57.4478 34.1008H51.3809V19.0899H54.3429V31.1719H58.6721L58.6734 31.1745Z" fill="#E6DCCF"/>
+      <path d="M34.6373 19.0919V34.1028H31.6753V28.0615H28.8271V34.1028H27.0914C26.7663 34.1028 26.4545 33.9752 26.2247 33.7481C25.9948 33.521 25.8657 33.2129 25.8657 32.8917V19.0919H28.8278V25.1332H31.6746V19.0919H34.6373Z" fill="#E6DCCF"/>
+      <path d="M21.4608 19.1031H16.6307C16.3859 19.0955 16.142 19.1356 15.9128 19.2211C15.6837 19.3066 15.4739 19.4359 15.2953 19.6016C15.1168 19.7673 14.973 19.9661 14.8723 20.1867C14.7715 20.4073 14.7157 20.6454 14.708 20.8873C14.708 20.9335 14.708 20.9796 14.708 21.0258V32.0996C14.7156 32.6292 14.9358 33.1341 15.32 33.5033C15.7043 33.8725 16.2212 34.0758 16.7571 34.0685H21.318C21.5834 34.0741 21.8472 34.0279 22.0946 33.9326C22.3419 33.8373 22.5678 33.6948 22.7593 33.5132C22.9509 33.3317 23.1044 33.1146 23.211 32.8744C23.3177 32.6342 23.3754 32.3755 23.3809 32.1133V28.8676H20.6281V31.2664H17.4607V22.2077H20.6255V24.7958H23.3796V21.0258C23.3911 20.7849 23.3544 20.544 23.2717 20.317C23.189 20.0901 23.0619 19.8814 22.8976 19.703C22.7333 19.5246 22.5351 19.3799 22.3142 19.2772C22.0933 19.1745 21.8541 19.1158 21.6102 19.1044C21.5606 19.1018 21.5108 19.1014 21.4608 19.1031Z" fill="#E6DCCF"/>
+      <path d="M21.3326 36.0151H14.6982V50.9584H21.4741C21.7189 50.966 21.9628 50.926 22.1919 50.8404C22.4211 50.7549 22.6309 50.6256 22.8094 50.4599C22.988 50.2942 23.1318 50.0954 23.2325 49.8748C23.3333 49.6542 23.3891 49.4162 23.3968 49.1742C23.3968 49.1281 23.3968 49.0819 23.3968 49.0357V37.9833C23.3888 37.4533 23.1681 36.9481 22.7832 36.5789C22.3983 36.2097 21.8808 36.0066 21.3444 36.0145L21.3326 36.0151ZM20.5769 48.2083H17.4128V38.771H20.5776L20.5769 48.2083Z" fill="#E6DCCF"/>
+      <path d="M50.4025 38.9109V50.9799H53.404V38.9109H56.7103V36.0366H47.0962V38.9109H50.4025Z" fill="#E6DCCF"/>
+      <path d="M58.6734 48.3287H55.9878V50.9825H57.4458C57.7708 50.9825 58.0826 50.8549 58.3124 50.6277C58.5423 50.4006 58.6714 50.0926 58.6714 49.7713V48.3287H58.6734Z" fill="#E6DCCF"/>
+      <path d="M32.8136 44.424C33.7279 44.424 34.2914 43.8458 34.2914 42.7329V38.0055C34.2837 37.4759 34.0636 36.971 33.6794 36.6018C33.2951 36.2326 32.7782 36.0293 32.2423 36.0366H27.3786C27.1239 36.0162 26.8677 36.0496 26.627 36.1346C26.3864 36.2196 26.1667 36.3541 25.9827 36.5294C25.7987 36.7046 25.6545 36.9166 25.5597 37.1511C25.4649 37.3856 25.4217 37.6374 25.4329 37.8897L25.4572 49.2887C25.4413 49.5169 25.4754 49.7459 25.5573 49.9599C25.6392 50.1738 25.767 50.3678 25.9319 50.5284C26.0967 50.689 26.2948 50.8125 26.5125 50.8905C26.7301 50.9684 26.9623 50.9989 27.193 50.9799H32.3746C33.4765 50.9799 34.2032 50.0764 34.2032 48.8718V48.2064H28.4107V44.4221H32.815L32.8136 44.424ZM28.2771 41.899V38.7717H31.4419V41.899H28.2771Z" fill="#E6DCCF"/>
+      <path d="M43.2416 36.0346H36.3223V51.0456H39.2843V46.1022H43.8261C44.7358 46.1022 45.2992 45.5213 45.2992 44.4065V38.0074C45.2911 37.4767 45.0699 36.9709 44.6844 36.6013C44.2989 36.2317 43.7806 36.0286 43.2436 36.0366L43.2416 36.0346ZM42.4557 43.5739H39.2909V38.7736H42.4557V43.5739Z" fill="#E6DCCF"/>
+    </svg>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" data-page="orders" onclick="showPage('orders')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      Orders
+    </a>
+    <a class="nav-item" data-page="producten" onclick="showPage('producten')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      Producten &amp; Voorraad
+    </a>
+    <a class="nav-item" data-page="sync" onclick="showPage('sync')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      Synchronisatie
+    </a>
+    <a class="nav-item" data-page="rapportages" onclick="showPage('rapportages')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Rapportages
+    </a>
+    <a class="nav-item" data-page="instellingen" onclick="showPage('instellingen')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Instellingen
+    </a>
+    <a class="nav-item" data-page="fulfillment-portal" onclick="showPage('fulfillment-portal')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+      Mijn orders
+    </a>
+  </nav>
+  <div class="sidebar-profile">
+    <div class="profile-avatar">ML</div>
+    <div class="profile-info">
+      <div class="profile-name">Maarten Land</div>
+      <div class="profile-role">Beheerder</div>
+    </div>
+    <button class="profile-logout" onclick="doLogout()" title="Uitloggen">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ════════════════════════════════ LOGIN ════════════════════════════════ -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg width="64" height="46" viewBox="0 0 77 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M58.5721 56.0033H4.98677C4.33164 56.0032 3.68295 55.8755 3.07776 55.6277C2.47256 55.3798 1.92271 55.0165 1.45962 54.5586C0.99653 54.1007 0.629273 53.5571 0.378827 52.9589C0.128381 52.3607 -0.000345159 51.7196 6.95066e-07 51.0722V4.92777C0.000175227 3.62089 0.525621 2.3676 1.46078 1.4435C2.39595 0.519402 3.66425 0.000172568 4.98677 1.00935e-07H58.5721C59.4485 -0.000175167 60.3095 0.227908 61.0682 0.661267C61.827 1.09463 62.4568 1.71795 62.8941 2.46844L76.3358 25.539C76.7711 26.2871 77.0002 27.1348 77.0002 27.9977C77.0002 28.8606 76.7711 29.7084 76.3358 30.4564L62.8947 53.527C62.4585 54.2791 61.829 54.9042 61.0701 55.3389C60.3111 55.7737 59.4494 56.0029 58.5721 56.0033Z" fill="#0E2A3C"/>
+        <path d="M40.1061 19.0919H37.1421V34.1028H40.1061V19.0919Z" fill="#E6DCCF"/>
+        <path d="M49.8018 31.1745V32.8897C49.8018 33.2109 49.6727 33.519 49.4429 33.7461C49.213 33.9732 48.9013 34.1008 48.5762 34.1008H42.5093V19.0899H45.4713V31.1719H49.7999L49.8018 31.1745Z" fill="#E6DCCF"/>
+        <path d="M58.6734 31.1745V32.8897C58.6734 33.2109 58.5443 33.519 58.3144 33.7461C58.0846 33.9732 57.7728 34.1008 57.4478 34.1008H51.3809V19.0899H54.3429V31.1719H58.6721L58.6734 31.1745Z" fill="#E6DCCF"/>
+        <path d="M34.6373 19.0919V34.1028H31.6753V28.0615H28.8271V34.1028H27.0914C26.7663 34.1028 26.4545 33.9752 26.2247 33.7481C25.9948 33.521 25.8657 33.2129 25.8657 32.8917V19.0919H28.8278V25.1332H31.6746V19.0919H34.6373Z" fill="#E6DCCF"/>
+        <path d="M21.4608 19.1031H16.6307C16.3859 19.0955 16.142 19.1356 15.9128 19.2211C15.6837 19.3066 15.4739 19.4359 15.2953 19.6016C15.1168 19.7673 14.973 19.9661 14.8723 20.1867C14.7715 20.4073 14.7157 20.6454 14.708 20.8873C14.708 20.9335 14.708 20.9796 14.708 21.0258V32.0996C14.7156 32.6292 14.9358 33.1341 15.32 33.5033C15.7043 33.8725 16.2212 34.0758 16.7571 34.0685H21.318C21.5834 34.0741 21.8472 34.0279 22.0946 33.9326C22.3419 33.8373 22.5678 33.6948 22.7593 33.5132C22.9509 33.3317 23.1044 33.1146 23.211 32.8744C23.3177 32.6342 23.3754 32.3755 23.3809 32.1133V28.8676H20.6281V31.2664H17.4607V22.2077H20.6255V24.7958H23.3796V21.0258C23.3911 20.7849 23.3544 20.544 23.2717 20.317C23.189 20.0901 23.0619 19.8814 22.8976 19.703C22.7333 19.5246 22.5351 19.3799 22.3142 19.2772C22.0933 19.1745 21.8541 19.1158 21.6102 19.1044C21.5606 19.1018 21.5108 19.1014 21.4608 19.1031Z" fill="#E6DCCF"/>
+        <path d="M21.3326 36.0151H14.6982V50.9584H21.4741C21.7189 50.966 21.9628 50.926 22.1919 50.8404C22.4211 50.7549 22.6309 50.6256 22.8094 50.4599C22.988 50.2942 23.1318 50.0954 23.2325 49.8748C23.3333 49.6542 23.3891 49.4162 23.3968 49.1742C23.3968 49.1281 23.3968 49.0819 23.3968 49.0357V37.9833C23.3888 37.4533 23.1681 36.9481 22.7832 36.5789C22.3983 36.2097 21.8808 36.0066 21.3444 36.0145L21.3326 36.0151ZM20.5769 48.2083H17.4128V38.771H20.5776L20.5769 48.2083Z" fill="#E6DCCF"/>
+        <path d="M50.4025 38.9109V50.9799H53.404V38.9109H56.7103V36.0366H47.0962V38.9109H50.4025Z" fill="#E6DCCF"/>
+        <path d="M32.8136 44.424C33.7279 44.424 34.2914 43.8458 34.2914 42.7329V38.0055C34.2837 37.4759 34.0636 36.971 33.6794 36.6018C33.2951 36.2326 32.7782 36.0293 32.2423 36.0366H27.3786C27.1239 36.0162 26.8677 36.0496 26.627 36.1346C26.3864 36.2196 26.1667 36.3541 25.9827 36.5294C25.7987 36.7046 25.6545 36.9166 25.5597 37.1511C25.4649 37.3856 25.4217 37.6374 25.4329 37.8897L25.4572 49.2887C25.4413 49.5169 25.4754 49.7459 25.5573 49.9599C25.6392 50.1738 25.767 50.3678 25.9319 50.5284C26.0967 50.689 26.2948 50.8125 26.5125 50.8905C26.7301 50.9684 26.9623 50.9989 27.193 50.9799H32.3746C33.4765 50.9799 34.2032 50.0764 34.2032 48.8718V48.2064H28.4107V44.4221H32.815L32.8136 44.424ZM28.2771 41.899V38.7717H31.4419V41.899H28.2771Z" fill="#E6DCCF"/>
+        <path d="M43.2416 36.0346H36.3223V51.0456H39.2843V46.1022H43.8261C44.7358 46.1022 45.2992 45.5213 45.2992 44.4065V38.0074C45.2911 37.4767 45.0699 36.9709 44.6844 36.6013C44.2989 36.2317 43.7806 36.0286 43.2436 36.0366L43.2416 36.0346ZM42.4557 43.5739H39.2909V38.7736H42.4557V43.5739Z" fill="#E6DCCF"/>
+      </svg>
+    </div>
+    <div class="login-title">Order Hub</div>
+    <div class="login-sub">Log in om verder te gaan</div>
+    <label class="login-label">E-mailadres</label>
+    <input class="login-input" type="email" placeholder="naam@chill-dept.nl" id="login-email">
+    <label class="login-label">Wachtwoord</label>
+    <input class="login-input" type="password" placeholder="••••••••" id="login-password">
+    <div id="login-error" style="color:#EF4444;font-size:12.5px;margin-bottom:12px;display:none">
+      Onjuist e-mailadres of wachtwoord.
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()">
+      Inloggen
+    </button>
+    <div style="margin-top:14px;font-size:12px;color:#9CA3AF;text-align:center">
+      Demo: gebruik een willekeurig e-mailadres en wachtwoord
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PAGES
+══════════════════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ── DASHBOARD ── -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Woensdag 4 juni 2025</div>
+      </div>
+      <button class="btn btn-secondary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        Vernieuwen
+      </button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Orders vandaag</div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-delta up">↑ 3 t.o.v. gisteren</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Omzet vandaag</div>
+        <div class="kpi-value">€ 2.847</div>
+        <div class="kpi-delta up">↑ 12% t.o.v. gisteren</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Te verwerken</div>
+        <div class="kpi-value" style="color:#F59E0B">8</div>
+        <div class="kpi-delta">Actie vereist</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AFAS niet ingevoerd</div>
+        <div class="kpi-value" style="color:#F59E0B">3</div>
+        <div class="kpi-delta">Te verwerken</div>
+      </div>
+    </div>
+
+    <!-- Recente orders -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header">
+        <span class="card-title">Recente orders</span>
+        <a class="btn btn-secondary" onclick="showPage('orders')" style="font-size:11.5px;padding:5px 11px">Alle orders →</a>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Kanaal</th>
+            <th>Klant</th>
+            <th>Bedrag</th>
+            <th>Status</th>
+            <th>AFAS</th>
+            <th>Aangemaakt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-mono">ORD-2024-001</td>
+            <td><span class="badge badge-woo">WooCommerce</span></td>
+            <td>Sophie van den Berg</td>
+            <td>€ 149,85</td>
+            <td><span class="badge badge-new">Nieuw</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td style="color:#9CA3AF">Vandaag 08:12</td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-002</td>
+            <td><span class="badge badge-bol">bol.com</span></td>
+            <td>Lars Jansen</td>
+            <td>€ 64,95</td>
+            <td><span class="badge badge-processing">In behandeling</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td style="color:#9CA3AF">Vandaag 09:03</td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-003</td>
+            <td><span class="badge badge-mir">Mirakl</span></td>
+            <td>Emma de Vries</td>
+            <td>€ 109,90</td>
+            <td><span class="badge badge-ready">Klaar voor verzending</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td style="color:#9CA3AF">Gisteren 14:22</td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-008</td>
+            <td><span class="badge badge-ebay">eBay</span></td>
+            <td>Daan Peters</td>
+            <td>€ 79,95</td>
+            <td><span class="badge badge-failed">Mislukt</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td style="color:#9CA3AF">Vandaag 06:55</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Kanaalstatus + actiecentrum -->
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Kanaalstatus</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Kanaal</th>
+              <th>Orders vandaag</th>
+              <th>Sync</th>
+              <th>Laatste sync</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-woo">WooCommerce</span></td>
+              <td>8</td>
+              <td><span class="badge badge-sync-ok">OK</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:00</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-bol">bol.com</span></td>
+              <td>5</td>
+              <td><span class="badge badge-sync-ok">OK</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:01</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-mir">Obelink</span></td>
+              <td>4</td>
+              <td><span class="badge badge-sync-warn">Waarschuwing</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:02</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-mir">Home24</span></td>
+              <td>3</td>
+              <td><span class="badge badge-sync-warn">Waarschuwing</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:02</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-ebay">eBay</span></td>
+              <td>4</td>
+              <td><span class="badge badge-sync-err">Fout</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:03</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Actiecentrum</span>
+          <span class="badge badge-failed">3 items</span>
+        </div>
+        <ul class="action-list">
+          <li class="action-item">
+            <div class="action-icon" style="background:#FEF2F2">
+              <svg width="14" height="14" fill="none" stroke="#EF4444" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div class="action-title">eBay sync mislukt</div>
+              <div class="action-sub">API authenticatiefout — 3 orders niet geladen</div>
+            </div>
+          </li>
+
+          <li class="action-item">
+            <div class="action-icon" style="background:#F0FDF4">
+              <svg width="14" height="14" fill="none" stroke="#22C55E" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div>
+              <div class="action-title">5 orders klaar voor verzending</div>
+              <div class="action-sub">Trackingcode toewijzen</div>
+            </div>
+          </li>
+          <li class="action-item">
+            <div class="action-icon" style="background:#FFF7ED">
+              <svg width="14" height="14" fill="none" stroke="#EA580C" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            </div>
+            <div>
+              <div class="action-title">2 retours in behandeling</div>
+              <div class="action-sub">Creditnota aanmaken in AFAS</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ORDERS ── -->
+  <div id="page-orders" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Orders</div>
+        <div class="page-subtitle">185 orders totaal</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary">Exporteren</button>
+        <button class="btn btn-primary">+ Bulkactie</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input class="filter-input" type="text" placeholder="Zoek op order, klant, e-mail…">
+      <select class="filter-select">
+        <option>Alle kanalen</option>
+        <option>WooCommerce</option>
+        <option>bol.com</option>
+        <option>Mirakl</option>
+        <option>eBay</option>
+      </select>
+      <select class="filter-select">
+        <option>Alle statussen</option>
+        <option>Nieuw</option>
+        <option>In behandeling</option>
+        <option>Klaar voor verzending</option>
+        <option>Verzonden</option>
+        <option>Afgerond</option>
+        <option>Geannuleerd</option>
+        <option>Retour</option>
+        <option>Mislukt</option>
+      </select>
+      <select class="filter-select">
+        <option>AFAS — alle</option>
+        <option>Niet ingevoerd</option>
+        <option>Ingevoerd</option>
+      </select>
+      <select class="filter-select">
+        <option>Vandaag</option>
+        <option>Gisteren</option>
+        <option>Afgelopen 7 dagen</option>
+        <option>Deze maand</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px"><input type="checkbox"></th>
+            <th>Order ID</th>
+            <th>Kanaal</th>
+            <th>Klant</th>
+            <th>Producten</th>
+            <th>Bedrag</th>
+            <th>Status</th>
+            <th>AFAS</th>
+            <th>Vervoerder</th>
+            <th>Datum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-001</td>
+            <td><span class="badge badge-woo">WooCommerce</span></td>
+            <td>Sophie van den Berg</td>
+            <td style="color:#6B7280">2 artikelen</td>
+            <td style="font-weight:500">€ 149,85</td>
+            <td><span class="badge badge-new">Nieuw</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td style="color:#9CA3AF">—</td>
+            <td style="color:#9CA3AF">04-06 08:12</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-002</td>
+            <td><span class="badge badge-bol">bol.com</span></td>
+            <td>Lars Jansen</td>
+            <td style="color:#6B7280">1 artikel</td>
+            <td style="font-weight:500">€ 64,95</td>
+            <td><span class="badge badge-processing">In behandeling</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td>PostNL</td>
+            <td style="color:#9CA3AF">04-06 09:03</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-003</td>
+            <td><span class="badge badge-mir">Obelink</span></td>
+            <td>Emma de Vries</td>
+            <td style="color:#6B7280">2 artikelen</td>
+            <td style="font-weight:500">€ 109,90</td>
+            <td><span class="badge badge-ready">Klaar voor verzending</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td>DHL</td>
+            <td style="color:#9CA3AF">03-06 14:22</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-004</td>
+            <td><span class="badge badge-ebay">eBay</span></td>
+            <td>Tom Bakker</td>
+            <td style="color:#6B7280">3 artikelen</td>
+            <td style="font-weight:500">€ 104,85</td>
+            <td><span class="badge badge-shipped">Verzonden</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td>DPD</td>
+            <td style="color:#9CA3AF">02-06 11:00</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-005</td>
+            <td><span class="badge badge-woo">WooCommerce</span></td>
+            <td>Nina Smits</td>
+            <td style="color:#6B7280">3 artikelen</td>
+            <td style="font-weight:500">€ 139,85</td>
+            <td><span class="badge badge-completed">Afgerond</span></td>
+            <td><span class="badge badge-afas-ok">Ingevoerd</span></td>
+            <td>PostNL</td>
+            <td style="color:#9CA3AF">30-05 16:40</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-006</td>
+            <td><span class="badge badge-bol">bol.com</span></td>
+            <td>Kevin Mulder</td>
+            <td style="color:#6B7280">1 artikel</td>
+            <td style="font-weight:500">€ 64,95</td>
+            <td><span class="badge badge-cancelled">Geannuleerd</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td style="color:#9CA3AF">—</td>
+            <td style="color:#9CA3AF">01-06 10:00</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-007</td>
+            <td><span class="badge badge-mir">Home24</span></td>
+            <td>Femke Visser</td>
+            <td style="color:#6B7280">1 artikel</td>
+            <td style="font-weight:500">€ 34,95</td>
+            <td><span class="badge badge-returned">Retour</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td>GLS</td>
+            <td style="color:#9CA3AF">28-05 09:00</td>
+          </tr>
+          <tr class="clickable" onclick="showPage('order-detail')">
+            <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="td-mono">ORD-2024-008</td>
+            <td><span class="badge badge-ebay">eBay</span></td>
+            <td>Daan Peters</td>
+            <td style="color:#6B7280">1 artikel</td>
+            <td style="font-weight:500">€ 79,95</td>
+            <td><span class="badge badge-failed">Mislukt</span></td>
+            <td><span class="badge badge-afas-not">Niet ingevoerd</span></td>
+            <td style="color:#9CA3AF">—</td>
+            <td style="color:#9CA3AF">04-06 06:55</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pagination">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:#9CA3AF">Toon</span>
+          <select class="filter-select" style="padding:4px 8px;font-size:13px">
+            <option selected>20</option>
+            <option>50</option>
+            <option>100</option>
+          </select>
+          <span style="color:#9CA3AF">per pagina</span>
+          <span style="margin-left:8px">· 1–8 van 20 orders</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary" style="padding:4px 10px">← Vorige</button>
+          <button class="btn btn-secondary" style="padding:4px 10px">Volgende →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTEN & VOORRAAD ── -->
+  <div id="page-producten" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Producten &amp; Voorraad</div>
+        <div class="page-subtitle">24 SKUs actief</div>
+      </div>
+      <button class="btn btn-secondary">Exporteren</button>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Totale SKUs</div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-delta">23 actief · 1 inactief</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Lage voorraad</div>
+        <div class="kpi-value" style="color:#F59E0B">4</div>
+        <div class="kpi-delta">Onder minimumdrempel</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Uitverkocht</div>
+        <div class="kpi-value" style="color:#EF4444">1</div>
+        <div class="kpi-delta">CD-SHIRT-WHT-XL</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Voorraadoverzicht</span>
+        <div style="display:flex;gap:8px">
+          <select class="filter-select">
+            <option>Alle categorieën</option>
+            <option>Hoodies</option>
+            <option>T-shirts</option>
+            <option>Joggers</option>
+            <option>Accessoires</option>
+          </select>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Categorie</th>
+            <th>Beschikbaar</th>
+            <th>Gereserveerd</th>
+            <th>Vrij</th>
+            <th>Locatie</th>
+            <th>Kanalen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-mono">CD-HOODIE-BLK-M</td>
+            <td>Hoodie Zwart M</td>
+            <td>Hoodies</td>
+            <td>28</td>
+            <td>5</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:93%;background:#22C55E"></span></span>
+              23
+            </td>
+            <td class="td-mono">A1-02</td>
+            <td>
+              <span class="badge badge-woo" style="margin-right:2px">WC</span>
+              <span class="badge badge-bol" style="margin-right:2px">bol</span>
+              <span class="badge badge-mir" style="margin-right:2px">MRK</span>
+              <span class="badge badge-ebay">eBay</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">CD-HOODIE-BLK-XL</td>
+            <td>Hoodie Zwart XL</td>
+            <td>Hoodies</td>
+            <td>4</td>
+            <td>1</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:30%;background:#F59E0B"></span></span>
+              <span style="color:#F59E0B;font-weight:500">3 ⚠</span>
+            </td>
+            <td class="td-mono">A1-04</td>
+            <td>
+              <span class="badge badge-woo" style="margin-right:2px">WC</span>
+              <span class="badge badge-ebay">eBay</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">CD-SHIRT-WHT-XL</td>
+            <td>T-shirt Wit XL</td>
+            <td>T-shirts</td>
+            <td>0</td>
+            <td>0</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:0%;background:#EF4444"></span></span>
+              <span style="color:#EF4444;font-weight:500">Uitverkocht</span>
+            </td>
+            <td class="td-mono">B2-04</td>
+            <td>
+              <span class="badge badge-woo">WC</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">CD-CAP-BLK</td>
+            <td>Cap Zwart</td>
+            <td>Accessoires</td>
+            <td>62</td>
+            <td>9</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:100%;background:#22C55E"></span></span>
+              53
+            </td>
+            <td class="td-mono">D1-01</td>
+            <td>
+              <span class="badge badge-woo" style="margin-right:2px">WC</span>
+              <span class="badge badge-bol" style="margin-right:2px">bol</span>
+              <span class="badge badge-mir" style="margin-right:2px">MRK</span>
+              <span class="badge badge-ebay">eBay</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">CD-CAP-WHT</td>
+            <td>Cap Wit</td>
+            <td>Accessoires</td>
+            <td>3</td>
+            <td>1</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:20%;background:#F59E0B"></span></span>
+              <span style="color:#F59E0B;font-weight:500">2 ⚠</span>
+            </td>
+            <td class="td-mono">D1-02</td>
+            <td>
+              <span class="badge badge-woo" style="margin-right:2px">WC</span>
+              <span class="badge badge-bol">bol</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">CD-JOGGER-GRY-M</td>
+            <td>Jogger Grijs M</td>
+            <td>Joggers</td>
+            <td>16</td>
+            <td>2</td>
+            <td>
+              <span class="stock-bar"><span class="stock-fill" style="width:80%;background:#22C55E"></span></span>
+              14
+            </td>
+            <td class="td-mono">C2-02</td>
+            <td>
+              <span class="badge badge-woo" style="margin-right:2px">WC</span>
+              <span class="badge badge-bol">bol</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── SYNCHRONISATIE ── -->
+  <div id="page-sync" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Synchronisatie</div>
+        <div class="page-subtitle">Laatste sync: vandaag 10:03</div>
+      </div>
+      <button class="btn btn-primary">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        Alles synchroniseren
+      </button>
+    </div>
+
+    <div class="sync-grid">
+      <!-- WooCommerce -->
+      <div class="card">
+        <div class="sync-kanaal-header">
+          <div>
+            <div class="sync-kanaal-name"><span class="badge badge-woo" style="margin-right:6px">WooCommerce</span></div>
+          </div>
+          <span class="badge badge-sync-ok">Operationeel</span>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Orders</div><div class="sync-meta">8 verwerkt · 0 fouten</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 10:00</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Voorraad</div><div class="sync-meta">24 SKUs bijgewerkt</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 09:30</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Producten</div><div class="sync-meta">24 producten gesynchroniseerd</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 08:00</div></div>
+        </div>
+      </div>
+
+      <!-- bol.com -->
+      <div class="card">
+        <div class="sync-kanaal-header">
+          <div><div class="sync-kanaal-name"><span class="badge badge-bol" style="margin-right:6px">bol.com</span></div></div>
+          <span class="badge badge-sync-ok">Operationeel</span>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Orders</div><div class="sync-meta">5 verwerkt · 0 fouten</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 10:01</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Voorraad</div><div class="sync-meta">18 SKUs bijgewerkt</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 09:31</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Producten</div><div class="sync-meta">16 producten gesynchroniseerd</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-ok">OK</span><div class="sync-meta" style="margin-top:3px">Vandaag 08:01</div></div>
+        </div>
+      </div>
+
+      <!-- Mirakl -->
+      <div class="card">
+        <div class="sync-kanaal-header">
+          <div><div class="sync-kanaal-name"><span class="badge badge-mir" style="margin-right:6px">Mirakl</span></div></div>
+          <span class="badge badge-sync-warn">Waarschuwing</span>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Orders</div><div class="sync-meta">4 verwerkt · 1 fout</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-warn">Waarschuwing</span><div class="sync-meta" style="margin-top:3px">Vandaag 10:02</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Voorraad</div><div class="sync-meta">20 verwerkt · 2 fouten</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-warn">Waarschuwing</span><div class="sync-meta" style="margin-top:3px">Vandaag 09:32</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Producten</div><div class="sync-meta">10 verwerkt · 3 afgewezen (EAN)</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-warn">Waarschuwing</span><div class="sync-meta" style="margin-top:3px">Vandaag 08:05</div></div>
+        </div>
+      </div>
+
+      <!-- eBay -->
+      <div class="card">
+        <div class="sync-kanaal-header">
+          <div><div class="sync-kanaal-name"><span class="badge badge-ebay" style="margin-right:6px">eBay</span></div></div>
+          <span class="badge badge-sync-err">Fout</span>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Orders</div><div class="sync-meta">API authenticatiefout (401)</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-err">Fout</span><div class="sync-meta" style="margin-top:3px">Vandaag 10:03</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Voorraad</div><div class="sync-meta">API-limiet bereikt</div></div>
+          <div style="text-align:right"><span class="badge badge-sync-err">Fout</span><div class="sync-meta" style="margin-top:3px">Vandaag 09:33</div></div>
+        </div>
+        <div class="sync-row">
+          <div><div class="sync-type">Producten</div><div class="sync-meta">Niet uitgevoerd</div></div>
+          <div style="text-align:right"><span class="badge badge-afas-not">Overgeslagen</span><div class="sync-meta" style="margin-top:3px">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RAPPORTAGES ── -->
+  <div id="page-rapportages" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Rapportages</div>
+        <div class="page-subtitle">Overzicht van omzet en prestaties</div>
+      </div>
+      <button class="btn btn-secondary">Exporteren</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Omzet deze maand</div>
+        <div class="kpi-value">€ 42.318</div>
+        <div class="kpi-delta up">↑ 18% t.o.v. vorige maand</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Orders deze maand</div>
+        <div class="kpi-value">382</div>
+        <div class="kpi-delta up">↑ 24 t.o.v. vorige maand</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Gemiddelde orderwaarde</div>
+        <div class="kpi-value">€ 110,80</div>
+        <div class="kpi-delta down">↓ 3% t.o.v. vorige maand</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Retourpercentage</div>
+        <div class="kpi-value">3,2%</div>
+        <div class="kpi-delta up">↓ 0,4% t.o.v. vorige maand</div>
+      </div>
+    </div>
+    <div class="rapportages-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Omzet per kanaal — deze maand</span></div>
+        <div class="bar-chart" style="padding-bottom:18px">
+          <div class="bar-row">
+            <div class="bar-label">WooCommerce</div>
+            <div class="bar-track"><div class="bar-fill" style="width:78%;background:#7C3AED"></div></div>
+            <div class="bar-value">€ 18.2k</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">bol.com</div>
+            <div class="bar-track"><div class="bar-fill" style="width:62%;background:#2563EB"></div></div>
+            <div class="bar-value">€ 14.5k</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Obelink</div>
+            <div class="bar-track"><div class="bar-fill" style="width:22%;background:#D97706"></div></div>
+            <div class="bar-value">€ 5.1k</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Home24</div>
+            <div class="bar-track"><div class="bar-fill" style="width:13%;background:#EA580C"></div></div>
+            <div class="bar-value">€ 3.0k</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">eBay</div>
+            <div class="bar-track"><div class="bar-fill" style="width:18%;background:#059669"></div></div>
+            <div class="bar-value">€ 4.2k</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Orders per kanaal — deze week</span></div>
+        <div class="bar-chart" style="padding-bottom:18px">
+          <div class="bar-row">
+            <div class="bar-label">WooCommerce</div>
+            <div class="bar-track"><div class="bar-fill" style="width:72%;background:#7C3AED"></div></div>
+            <div class="bar-value">72</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">bol.com</div>
+            <div class="bar-track"><div class="bar-fill" style="width:58%;background:#2563EB"></div></div>
+            <div class="bar-value">58</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Obelink</div>
+            <div class="bar-track"><div class="bar-fill" style="width:20%;background:#D97706"></div></div>
+            <div class="bar-value">20</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Home24</div>
+            <div class="bar-track"><div class="bar-fill" style="width:14%;background:#EA580C"></div></div>
+            <div class="bar-value">14</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">eBay</div>
+            <div class="bar-track"><div class="bar-fill" style="width:21%;background:#059669"></div></div>
+            <div class="bar-value">21</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INSTELLINGEN ── -->
+  <div id="page-instellingen" class="page">
+    <div class="page-header">
+      <div><div class="page-title">Instellingen</div></div>
+    </div>
+    <div style="display:grid;gap:14px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Kanaalinstellingen</span></div>
+        <table>
+          <thead><tr><th>Kanaal</th><th>Status</th><th>Laatste sync</th><th>API-sleutel</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-woo">WooCommerce</span></td>
+              <td><span class="badge badge-sync-ok">Verbonden</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:00</td>
+              <td class="td-mono">••••••••••••3f7a</td>
+              <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Bewerken</button></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-bol">bol.com</span></td>
+              <td><span class="badge badge-sync-ok">Verbonden</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:01</td>
+              <td class="td-mono">••••••••••••9c2b</td>
+              <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Bewerken</button></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-mir">Mirakl</span></td>
+              <td><span class="badge badge-sync-warn">Waarschuwing</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:02</td>
+              <td class="td-mono">••••••••••••a11e</td>
+              <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Bewerken</button></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-ebay">eBay</span></td>
+              <td><span class="badge badge-sync-err">Fout</span></td>
+              <td style="color:#9CA3AF">Vandaag 10:03</td>
+              <td class="td-mono">••••••••••••d45f</td>
+              <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Bewerken</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Gebruikersbeheer</span>
+          <button class="btn btn-primary" style="font-size:12.5px;padding:5px 12px">+ Gebruiker uitnodigen</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Naam</th>
+              <th>E-mailadres</th>
+              <th>Rol</th>
+              <th>Rechten</th>
+              <th>Laatste login</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500">Maarten Land</td>
+              <td style="color:#6B7280">maarten@chill-dept.nl</td>
+              <td><span class="badge" style="background:#EFF6FF;color:#2563EB">Beheerder</span></td>
+              <td style="color:#6B7280;font-size:12.5px">Alles</td>
+              <td style="color:#9CA3AF">Vandaag 08:30</td>
+              <td><span class="badge badge-sync-ok">Actief</span></td>
+              <td><button class="btn btn-secondary" style="padding:3px 9px;font-size:12px">Bewerken</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500">Collega Naam</td>
+              <td style="color:#6B7280">collega@chill-dept.nl</td>
+              <td><span class="badge" style="background:#F0FDF4;color:#16A34A">Medewerker</span></td>
+              <td style="color:#6B7280;font-size:12.5px">Orders, AFAS, Producten</td>
+              <td style="color:#9CA3AF">Gisteren 16:45</td>
+              <td><span class="badge badge-sync-ok">Actief</span></td>
+              <td><button class="btn btn-secondary" style="padding:3px 9px;font-size:12px">Bewerken</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500">Fulfillment Partner</td>
+              <td style="color:#6B7280">orders@fulfillment-partner.nl</td>
+              <td><span class="badge" style="background:#FFF7ED;color:#D97706">Fulfillment partner</span></td>
+              <td style="color:#6B7280;font-size:12.5px">Eigen orders + T&T invoeren</td>
+              <td style="color:#9CA3AF">Vandaag 07:12</td>
+              <td><span class="badge badge-sync-ok">Actief</span></td>
+              <td><button class="btn btn-secondary" style="padding:3px 9px;font-size:12px">Bewerken</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding:14px 18px;border-top:1px solid #E5E7EB;background:#F9FAFB;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div>
+            <div class="detail-field-label" style="margin-bottom:4px">Naam</div>
+            <input class="inline-input" type="text" placeholder="Volledige naam" style="width:160px">
+          </div>
+          <div>
+            <div class="detail-field-label" style="margin-bottom:4px">E-mailadres</div>
+            <input class="inline-input" type="email" placeholder="naam@bedrijf.nl" style="width:200px">
+          </div>
+          <div>
+            <div class="detail-field-label" style="margin-bottom:4px">Rol</div>
+            <select class="inline-select">
+              <option>Beheerder</option>
+              <option>Medewerker</option>
+              <option>Fulfillment partner</option>
+            </select>
+          </div>
+          <button class="btn btn-primary">Uitnodigen</button>
+          <button class="btn btn-secondary">Annuleren</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ORDER DETAIL ── -->
+  <div id="page-order-detail" class="page">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <a onclick="showPage('orders')">Orders</a>
+      <span>›</span>
+      <span style="color:#111827;font-weight:500">ORD-2024-003</span>
+    </div>
+
+    <!-- Header -->
+    <div class="page-header" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="page-title">ORD-2024-003</div>
+        <span class="badge badge-mir">Mirakl / Obelink</span>
+        <span class="badge badge-ready" style="font-size:13px;padding:4px 10px">Klaar voor verzending</span>
+      </div>
+      <div class="detail-actions">
+        <!-- Status wijzigen — 1 klik -->
+        <select class="status-select">
+          <option>Wijzig status…</option>
+          <option>Nieuw</option>
+          <option>In behandeling</option>
+          <option selected>Klaar voor verzending</option>
+          <option>Verzonden</option>
+          <option>Afgerond</option>
+          <option>Geannuleerd</option>
+          <option>Retour</option>
+        </select>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          AFAS invoeren
+        </button>
+        <button class="btn btn-secondary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Tracking toewijzen
+        </button>
+        <button class="btn btn-secondary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Pakbon
+        </button>
+        <button class="btn btn-secondary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Factuur
+        </button>
+        <button class="btn btn-secondary" style="color:#EF4444;border-color:#FECACA">
+          Annuleren
+        </button>
+      </div>
+    </div>
+
+    <!-- Body grid -->
+    <div class="order-detail-grid">
+
+      <!-- Links: regels + tijdlijn -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Orderregels -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Orderregels</span>
+            <span style="font-size:13px;color:#6B7280">2 artikelen · € 109,90</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Product</th>
+                <th>Aantal</th>
+                <th>Stukprijs</th>
+                <th style="text-align:right">Totaal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-mono">CD-CAP-BLK</td>
+                <td>Chill-Dept Cap Zwart</td>
+                <td>1</td>
+                <td>€ 29,95</td>
+                <td style="text-align:right;font-weight:500">€ 29,95</td>
+              </tr>
+              <tr>
+                <td class="td-mono">CD-HOODIE-NVY-S</td>
+                <td>Chill-Dept Hoodie Navy S</td>
+                <td>1</td>
+                <td>€ 79,95</td>
+                <td style="text-align:right;font-weight:500">€ 79,95</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="display:flex;justify-content:flex-end;padding:12px 16px;border-top:1px solid #F3F4F6;gap:32px">
+            <span style="font-size:13px;color:#6B7280">Subtotaal</span>
+            <span style="font-size:13px;font-weight:500">€ 109,90</span>
+          </div>
+        </div>
+
+        <!-- Tijdlijn -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Tijdlijn</span></div>
+          <div style="padding:18px 20px">
+            <ul class="timeline">
+              <li class="timeline-item">
+                <div class="timeline-dot active">
+                  <svg width="10" height="10" fill="white" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="white" stroke-width="3" fill="none"/></svg>
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-title">Klaar voor verzending</div>
+                  <div class="timeline-meta">Vandaag 07:30 · Automatisch na AFAS-invoer</div>
+                </div>
+              </li>
+              <li class="timeline-item">
+                <div class="timeline-dot green">
+                  <svg width="10" height="10" fill="white" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="white" stroke-width="3" fill="none"/></svg>
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-title">AFAS ingevoerd</div>
+                  <div class="timeline-meta">Vandaag 07:35 · Handmatig door admin</div>
+                </div>
+              </li>
+              <li class="timeline-item">
+                <div class="timeline-dot" style="border-color:#6B7280"></div>
+                <div class="timeline-content">
+                  <div class="timeline-title">In behandeling</div>
+                  <div class="timeline-meta">Gisteren 15:00 · Automatisch</div>
+                </div>
+              </li>
+              <li class="timeline-item">
+                <div class="timeline-dot" style="border-color:#6B7280"></div>
+                <div class="timeline-content">
+                  <div class="timeline-title">Order ontvangen</div>
+                  <div class="timeline-meta">Gisteren 14:22 · via Obelink (Mirakl)</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Notities -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Notities</span>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px">+ Toevoegen</button>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;font-size:13.5px;color:#92400E">
+              Klant heeft gevraagd om cadeauverpakking
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Rechts: klant + verzending + AFAS -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <!-- Klantgegevens -->
+        <div class="card" style="padding:16px">
+          <div class="section-label">Klantgegevens</div>
+          <div class="detail-field">
+            <div class="detail-field-label">Naam</div>
+            <div class="detail-field-value">Emma de Vries</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">E-mail</div>
+            <div class="detail-field-value" style="color:#2563EB">emma.devries@example.nl</div>
+          </div>
+          <div class="detail-field" style="margin-bottom:0">
+            <div class="detail-field-label">Afleveradres</div>
+            <div class="detail-field-value">
+              Nieuwe Binnenweg 87<br>
+              3014 GC Rotterdam<br>
+              Nederland
+            </div>
+          </div>
+        </div>
+
+        <!-- Verzending -->
+        <div class="card" style="padding:16px">
+          <div class="section-label">Verzending</div>
+          <div class="detail-field" style="margin-bottom:0">
+            <div class="detail-field-label">Track & Trace code</div>
+            <div class="inline-form" style="margin-top:4px">
+              <input class="inline-input" type="text" placeholder="Voer trackingcode in…">
+              <button class="btn btn-primary" style="padding:7px 12px;font-size:13px">Opslaan</button>
+            </div>
+            <div style="margin-top:7px;font-size:12px;color:#9CA3AF">Kan ook worden ingevuld door de fulfillment partner via de portal</div>
+          </div>
+        </div>
+
+        <!-- AFAS -->
+        <div class="card" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-label" style="margin-bottom:0">AFAS</div>
+            <span class="badge badge-afas-ok">Ingevoerd</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Factuurnummer</div>
+            <div class="detail-field-value td-mono">AFAS-2024-00312</div>
+          </div>
+          <div class="detail-field" style="margin-bottom:0">
+            <div class="detail-field-label">Ingevoerd op</div>
+            <div class="detail-field-value">Vandaag 07:35</div>
+          </div>
+        </div>
+
+        <!-- Orderinfo -->
+        <div class="card" style="padding:16px">
+          <div class="section-label">Orderinfo</div>
+          <div class="detail-field">
+            <div class="detail-field-label">Kanaal order ID</div>
+            <div class="detail-field-value td-mono">MRK-55002</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Kanaal</div>
+            <div class="detail-field-value"><span class="badge badge-mir">Obelink (Mirakl)</span></div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Aangemaakt</div>
+            <div class="detail-field-value">Gisteren 14:22</div>
+          </div>
+          <div class="detail-field" style="margin-bottom:0">
+            <div class="detail-field-label">Bijgewerkt</div>
+            <div class="detail-field-value">Vandaag 07:30</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FULFILLMENT PORTAL ── -->
+  <div id="page-fulfillment-portal" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Te verwerken orders</div>
+        <div class="page-subtitle">5 orders wachten op verwerking</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Nieuw</div>
+        <div class="kpi-value" style="color:#3B82F6">2</div>
+        <div class="kpi-delta">Nog niet opgepakt</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">In behandeling</div>
+        <div class="kpi-value" style="color:#F59E0B">2</div>
+        <div class="kpi-delta">Wordt verwerkt</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Klaar voor verzending</div>
+        <div class="kpi-value" style="color:#22C55E">1</div>
+        <div class="kpi-delta">T&T nog in te vullen</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0">
+      <div class="card-header">
+        <span class="card-title">Openstaande orders</span>
+        <select class="filter-select" style="font-size:12.5px">
+          <option>Alle statussen</option>
+          <option>Nieuw</option>
+          <option>In behandeling</option>
+          <option>Klaar voor verzending</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Kanaal</th>
+            <th>Producten</th>
+            <th>Klant</th>
+            <th>Afleveradres</th>
+            <th>Status</th>
+            <th>Track &amp; Trace</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-mono">ORD-2024-001</td>
+            <td><span class="badge badge-woo">WooCommerce</span></td>
+            <td style="color:#374151;line-height:1.6">CD-CAP-BLK × 1<br><span style="color:#9CA3AF">CD-HOODIE-NVY-S × 1</span></td>
+            <td style="font-weight:500">Sophie van den Berg</td>
+            <td style="font-size:13px;color:#6B7280;line-height:1.6">Nieuwe Binnenweg 87<br>3014 GC Rotterdam</td>
+            <td><span class="badge badge-new">Nieuw</span></td>
+            <td>
+              <div style="display:flex;gap:6px;min-width:230px">
+                <input class="inline-input" type="text" placeholder="Trackingcode…" style="flex:1">
+                <button class="btn btn-primary" style="padding:5px 10px;font-size:12.5px;white-space:nowrap">Opslaan</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-002</td>
+            <td><span class="badge badge-bol">bol.com</span></td>
+            <td style="color:#374151">CD-JOGGER-GRY-M × 1</td>
+            <td style="font-weight:500">Lars Jansen</td>
+            <td style="font-size:13px;color:#6B7280;line-height:1.6">Keizersgracht 312<br>1016 EX Amsterdam</td>
+            <td><span class="badge badge-processing">In behandeling</span></td>
+            <td>
+              <div style="display:flex;gap:6px;min-width:230px">
+                <input class="inline-input" type="text" placeholder="Trackingcode…" style="flex:1">
+                <button class="btn btn-primary" style="padding:5px 10px;font-size:12.5px;white-space:nowrap">Opslaan</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-003</td>
+            <td><span class="badge badge-mir">Obelink</span></td>
+            <td style="color:#374151;line-height:1.6">CD-CAP-BLK × 1<br><span style="color:#9CA3AF">CD-HOODIE-NVY-S × 1</span></td>
+            <td style="font-weight:500">Emma de Vries</td>
+            <td style="font-size:13px;color:#6B7280;line-height:1.6">Nieuwe Binnenweg 87<br>3014 GC Rotterdam</td>
+            <td><span class="badge badge-ready">Klaar voor verzending</span></td>
+            <td>
+              <div style="display:flex;gap:6px;min-width:230px">
+                <input class="inline-input" type="text" placeholder="Trackingcode…" style="flex:1">
+                <button class="btn btn-primary" style="padding:5px 10px;font-size:12.5px;white-space:nowrap">Opslaan</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-005</td>
+            <td><span class="badge badge-woo">WooCommerce</span></td>
+            <td style="color:#374151;line-height:1.6">CD-SHIRT-WHT-M × 2<br><span style="color:#9CA3AF">CD-CAP-WHT × 1</span></td>
+            <td style="font-weight:500">Nina Smits</td>
+            <td style="font-size:13px;color:#6B7280;line-height:1.6">Grote Markt 5<br>9711 LV Groningen</td>
+            <td><span class="badge badge-new">Nieuw</span></td>
+            <td>
+              <div style="display:flex;gap:6px;min-width:230px">
+                <input class="inline-input" type="text" placeholder="Trackingcode…" style="flex:1">
+                <button class="btn btn-primary" style="padding:5px 10px;font-size:12.5px;white-space:nowrap">Opslaan</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-mono">ORD-2024-007</td>
+            <td><span class="badge badge-mir">Home24</span></td>
+            <td style="color:#374151">CD-HOODIE-BLK-M × 1</td>
+            <td style="font-weight:500">Femke Visser</td>
+            <td style="font-size:13px;color:#6B7280;line-height:1.6">Markt 14<br>4811 KA Breda</td>
+            <td><span class="badge badge-processing">In behandeling</span></td>
+            <td>
+              <div style="display:flex;gap:6px;min-width:230px">
+                <input class="inline-input" type="text" placeholder="Trackingcode…" style="flex:1">
+                <button class="btn btn-primary" style="padding:5px 10px;font-size:12.5px;white-space:nowrap">Opslaan</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+
+  function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+
+  function showPage(name) {
+    closeSidebar();
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    const pageMap = {
+      dashboard: 'page-dashboard',
+      orders: 'page-orders',
+      'order-detail': 'page-order-detail',
+      producten: 'page-producten',
+      sync: 'page-sync',
+      rapportages: 'page-rapportages',
+      instellingen: 'page-instellingen',
+      'fulfillment-portal': 'page-fulfillment-portal',
+    };
+
+    const navIndex = { dashboard:0, orders:1, 'order-detail':1, producten:2, sync:3, rapportages:4, instellingen:5, 'fulfillment-portal':6 };
+
+    document.getElementById(pageMap[name]).classList.add('active');
+    document.querySelectorAll('.nav-item')[navIndex[name]].classList.add('active');
+
+    document.querySelector('.main').scrollTop = 0;
+  }
+
+  function doLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) {
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-error').textContent = 'Vul je e-mailadres en wachtwoord in.';
+      return;
+    }
+    const name = email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('');
+    document.querySelector('.profile-name').textContent = name;
+    document.querySelector('.profile-avatar').textContent = initials;
+
+    const isFulfillment = /fulfillment|partner|logistiek/i.test(email);
+    if (isFulfillment) {
+      document.body.classList.add('role-fulfillment');
+      document.querySelector('.profile-role').textContent = 'Fulfillment partner';
+      document.getElementById('login-screen').style.display = 'none';
+      showPage('fulfillment-portal');
+    } else {
+      document.body.classList.remove('role-fulfillment');
+      document.querySelector('.profile-role').textContent = 'Beheerder';
+      document.getElementById('login-screen').style.display = 'none';
+      showPage('dashboard');
+    }
+  }
+
+  function doLogout() {
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    document.body.classList.remove('role-fulfillment');
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+
+  // Enter-toets werkt op loginscherm
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
+  });
+</script>
+
+</body>
+</html>

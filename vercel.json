@@ -1,6 +1,5 @@
 {
   "crons": [
-    { "path": "/api/sync/woocommerce", "schedule": "0 6 * * *" },
-    { "path": "/api/sync/mirakl", "schedule": "0 6 * * *" }
+    { "path": "/api/sync", "schedule": "0 6 * * *" }
   ]
 }
