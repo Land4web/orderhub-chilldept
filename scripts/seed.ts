@@ -52,9 +52,9 @@ async function seed() {
       const { data: existing } = await supabase.auth.admin.listUsers()
       const found = existing?.users?.find(x => x.email === u.email)
       if (!found) { console.warn(`Could not resolve user ID for ${u.email}`); continue }
-      await supabase.from('profiles').upsert({ id: found.id, name: u.name, initials: u.initials, role: u.role })
+      await supabase.from('profiles').upsert({ id: found.id, name: u.name, initials: u.initials, role: u.role, email: u.email })
     } else {
-      await supabase.from('profiles').upsert({ id: userId, name: u.name, initials: u.initials, role: u.role })
+      await supabase.from('profiles').upsert({ id: userId, name: u.name, initials: u.initials, role: u.role, email: u.email })
     }
     console.log(`  ✓ ${u.email}`)
   }

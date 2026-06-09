@@ -178,11 +178,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <Check size={12} strokeWidth={2.5} />
             {afasStatus === 'entered' ? 'AFAS ingevoerd' : 'AFAS invoeren'}
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium border border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors">
+          <button
+            onClick={() => window.open(`/orders/${order.id}/pakbon`, '_blank')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium border border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors"
+          >
             <Download size={12} />
             Pakbon
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium border border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors">
+          <button
+            onClick={() => window.open(`/orders/${order.id}/factuur`, '_blank')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium border border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors"
+          >
             <Download size={12} />
             Factuur
           </button>

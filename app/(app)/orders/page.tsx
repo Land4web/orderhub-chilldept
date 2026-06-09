@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getOrders } from '@/lib/db/orders'
+import { supabase } from '@/lib/supabase/client'
 import { STATUS_LABEL, STATUS_STYLE, CHANNEL_STYLE } from '@/lib/styles'
 import { Search } from 'lucide-react'
 import type { Order, OrderStatus, Kanaal, AfasStatus } from '@/lib/types/index'
@@ -59,7 +60,39 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  useEffect(() => { getOrders().then(setOrders) }, [])
+  useEffect(() => {
+    getOrders().then(setOrders)
+    const channel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        getOrders().then(setOrders)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  function exportCSV() {
+    const header = ['ID', 'Kanaal', 'Klant', 'Status', 'AFAS', 'Totaal', 'Datum']
+    const rows = filtered.map(o => [
+      o.id,
+      o.kanaal,
+      o.klantNaam,
+      STATUS_LABEL[o.status],
+      o.afasStatus === 'entered' ? 'Ingevoerd' : 'Niet ingevoerd',
+      `€${o.totaal.toFixed(2)}`,
+      new Date(o.aangemaaktOp).toLocaleDateString('nl-NL'),
+    ])
+    const csv = [header, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const filtered = useMemo(() => orders.filter(o => {
     const q = search.toLowerCase()
@@ -101,7 +134,10 @@ export default function OrdersPage() {
           <p className="text-base text-[#9CA3AF] mt-0.5">{filtered.length} van {orders.length} orders</p>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center px-3 py-1.5 text-[15.5px] font-medium border border-[#E5E7EB] rounded-md text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors">
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center px-3 py-1.5 text-[15.5px] font-medium border border-[#E5E7EB] rounded-md text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors"
+          >
             Exporteren
           </button>
           {selected.size > 0 && (
