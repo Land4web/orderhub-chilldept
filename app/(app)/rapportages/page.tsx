@@ -1,82 +1,138 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getOrders } from '@/lib/db/orders'
-import { TrendingUp, ShoppingCart, Package, RotateCcw } from 'lucide-react'
-import type { Order, Kanaal } from '@/lib/types'
+import { STATUS_LABEL, STATUS_STYLE } from '@/lib/styles'
+import { TrendingUp, ShoppingCart, Package, RotateCcw, Download } from 'lucide-react'
+import type { Order, OrderStatus } from '@/lib/types'
 
-const mainChannels: Kanaal[] = ['WooCommerce', 'bol.com', 'Mirakl', 'eBay']
+const DATE_OPTIONS = [
+  { value: '', label: 'Alle tijd' },
+  { value: 'today', label: 'Vandaag' },
+  { value: 'yesterday', label: 'Gisteren' },
+  { value: '7days', label: 'Afgelopen 7 dagen' },
+  { value: 'month', label: 'Deze maand' },
+  { value: 'prev_month', label: 'Vorige maand' },
+]
 
-type KanaalRij = { label: string; kanaal: Kanaal; count: number; revenue: number; pct: number; color: string }
+const CHART_COLORS = ['#7C3AED', '#2563EB', '#D97706', '#059669', '#DC2626', '#0891B2', '#9333EA', '#EA580C']
+
+function isInDateRange(iso: string, range: string): boolean {
+  if (!range) return true
+  const d = new Date(iso)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (range === 'today') return d >= today
+  if (range === 'yesterday') {
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
+    return d >= yesterday && d < today
+  }
+  if (range === '7days') {
+    const week = new Date(today); week.setDate(week.getDate() - 7); return d >= week
+  }
+  if (range === 'month') return d >= new Date(now.getFullYear(), now.getMonth(), 1)
+  if (range === 'prev_month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const end = new Date(now.getFullYear(), now.getMonth(), 1)
+    return d >= start && d < end
+  }
+  return true
+}
 
 export default function RapportagesPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [dateFilter, setDateFilter] = useState('')
 
   useEffect(() => { getOrders().then(setOrders) }, [])
 
-  const activeOrders = orders.filter(o => !['cancelled', 'failed'].includes(o.status))
-  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.totaal, 0)
-  const completedOrders = orders.filter(o => o.status === 'completed')
-  const returnedOrders = orders.filter(o => o.status === 'returned')
-  const cancelledOrders = orders.filter(o => ['cancelled', 'failed'].includes(o.status))
+  const filtered = useMemo(
+    () => orders.filter(o => isInDateRange(o.aangemaaktOp, dateFilter)),
+    [orders, dateFilter]
+  )
 
-  const channelColors: Record<Kanaal, string> = {
-    'WooCommerce': '#7C3AED',
-    'bol.com': '#2563EB',
-    'Mirakl': '#D97706',
-    'eBay': '#059669',
+  const activeOrders = filtered.filter(o => !['cancelled', 'failed'].includes(o.status))
+  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.totaal, 0)
+  const completedOrders = filtered.filter(o => o.status === 'completed')
+  const returnedOrders = filtered.filter(o => o.status === 'returned')
+  const avgOrderValue = activeOrders.length > 0 ? totalRevenue / activeOrders.length : 0
+
+  // Dynamic channel stats from actual order data
+  const channelNames = [...new Set(filtered.map(o => o.kanaal))].sort()
+  const channelStats = channelNames.map((kanaal, i) => {
+    const ch = filtered.filter(o => o.kanaal === kanaal)
+    const revenue = ch
+      .filter(o => !['cancelled', 'failed'].includes(o.status))
+      .reduce((sum, o) => sum + o.totaal, 0)
+    return { kanaal, count: ch.length, revenue, color: CHART_COLORS[i % CHART_COLORS.length] }
+  }).sort((a, b) => b.revenue - a.revenue)
+  const maxRevenue = Math.max(...channelStats.map(s => s.revenue), 1)
+
+  // Top products from active orders
+  const productMap = new Map<string, { naam: string; stuks: number; omzet: number }>()
+  filtered
+    .filter(o => !['cancelled', 'failed'].includes(o.status))
+    .forEach(o => o.regels.forEach(r => {
+      const p = productMap.get(r.sku)
+      if (p) { p.stuks += r.aantal; p.omzet += r.prijs * r.aantal }
+      else productMap.set(r.sku, { naam: r.naam, stuks: r.aantal, omzet: r.prijs * r.aantal })
+    }))
+  const topProducts = [...productMap.entries()]
+    .map(([sku, v]) => ({ sku, ...v }))
+    .sort((a, b) => b.omzet - a.omzet)
+    .slice(0, 6)
+
+  // Status breakdown
+  const statusCounts = filtered.reduce((acc, o) => {
+    acc[o.status] = (acc[o.status] || 0) + 1; return acc
+  }, {} as Record<string, number>)
+  const statusBreakdown = Object.entries(statusCounts).sort((a, b) => b[1] - a[1])
+
+  function exportCSV() {
+    const header = ['Order ID', 'Kanaal', 'Klant', 'E-mail', 'Status', 'Bedrag (€)', 'Datum']
+    const rows = filtered.map(o => [
+      o.id, o.kanaal, o.klantNaam, o.klantEmail,
+      STATUS_LABEL[o.status],
+      o.totaal.toFixed(2),
+      new Date(o.aangemaaktOp).toLocaleDateString('nl-NL'),
+    ])
+    const csv = [header, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url
+    a.download = `rapportage-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
   }
 
-  const miraklOrders = orders.filter(o => o.kanaal === 'Mirakl' && !['cancelled', 'failed'].includes(o.status))
-  const miraklRevenue = miraklOrders.reduce((s, o) => s + o.totaal, 0)
-  const miraklCount = orders.filter(o => o.kanaal === 'Mirakl').length
-
-  const baseStats = mainChannels
-    .filter(k => k !== 'Mirakl')
-    .map(kanaal => {
-      const channelOrders = orders.filter(o => o.kanaal === kanaal)
-      const revenue = channelOrders
-        .filter(o => !['cancelled', 'failed'].includes(o.status))
-        .reduce((sum, o) => sum + o.totaal, 0)
-      return { label: kanaal, kanaal, count: channelOrders.length, revenue, color: channelColors[kanaal] }
-    })
-
-  const obelinkRevenue = Math.round(miraklRevenue * 0.63)
-  const home24Revenue = miraklRevenue - obelinkRevenue
-  const obelinkCount = Math.ceil(miraklCount * 0.6)
-  const home24Count = miraklCount - obelinkCount
-
-  const allStats: Omit<KanaalRij, 'pct'>[] = [
-    ...baseStats,
-    { label: 'Obelink (Mirakl)', kanaal: 'Mirakl', count: obelinkCount, revenue: obelinkRevenue, color: '#D97706' },
-    { label: 'Home24 (Mirakl)', kanaal: 'Mirakl', count: home24Count, revenue: home24Revenue, color: '#EA580C' },
-  ]
-
-  const maxRevenue = Math.max(...allStats.map(s => s.revenue), 1)
-  const channelStats: KanaalRij[] = allStats.map(s => ({
-    ...s,
-    pct: (s.revenue / maxRevenue) * 100,
-  }))
-
-  const topProducts: { naam: string; sku: string; stuks: number; omzet: number }[] = []
-  orders.forEach(o => {
-    o.regels.forEach(r => {
-      const existing = topProducts.find(p => p.sku === r.sku)
-      if (existing) {
-        existing.stuks += r.aantal
-        existing.omzet += r.prijs * r.aantal
-      } else {
-        topProducts.push({ naam: r.naam, sku: r.sku, stuks: r.aantal, omzet: r.prijs * r.aantal })
-      }
-    })
-  })
-  topProducts.sort((a, b) => b.omzet - a.omzet)
+  const dateLabel = DATE_OPTIONS.find(o => o.value === dateFilter)?.label ?? ''
 
   return (
     <div className="py-7 px-8 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-[#111827]">Rapportages</h1>
-        <p className="text-base text-[#9CA3AF] mt-0.5">Overzicht van alle orderdata</p>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-lg font-semibold text-[#111827]">Rapportages</h1>
+          <p className="text-base text-[#9CA3AF] mt-0.5">
+            {filtered.length} orders{dateFilter ? ` · ${dateLabel}` : ''}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="text-[15.5px] border border-[#E5E7EB] rounded-md px-2.5 py-1.5 outline-none focus:border-[#E8A000] bg-white text-[#374151]"
+          >
+            {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[15.5px] font-medium border border-[#E5E7EB] rounded-md text-[#374151] bg-white hover:bg-[#F9FAFB] transition-colors"
+          >
+            <Download size={13} />
+            Exporteren
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -89,15 +145,25 @@ export default function RapportagesPage() {
           <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">
             €{totalRevenue.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-[12px] text-[#6B7280]">Actieve orders</p>
+          <p className="text-[12px] text-[#6B7280]">{activeOrders.length} actieve orders</p>
         </div>
         <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
           <div className="flex items-center gap-2 mb-2">
             <ShoppingCart size={13} className="text-[#3B82F6]" />
             <span className="text-[12.5px] text-[#6B7280]">Totaal orders</span>
           </div>
-          <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">{orders.length}</p>
+          <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">{filtered.length}</p>
           <p className="text-[12px] text-[#6B7280]">{completedOrders.length} afgerond</p>
+        </div>
+        <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Package size={13} className="text-[#E8A000]" />
+            <span className="text-[12.5px] text-[#6B7280]">Gem. orderbedrag</span>
+          </div>
+          <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">
+            €{avgOrderValue.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-[12px] text-[#6B7280]">Per actieve order</p>
         </div>
         <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -106,33 +172,30 @@ export default function RapportagesPage() {
           </div>
           <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">{returnedOrders.length}</p>
           <p className="text-[12px] text-[#6B7280]">
-            {orders.length > 0 ? ((returnedOrders.length / orders.length) * 100).toFixed(1) : 0}% retourpercentage
+            {filtered.length > 0 ? ((returnedOrders.length / filtered.length) * 100).toFixed(1) : '0'}% retourpercentage
           </p>
-        </div>
-        <div className="bg-white rounded-lg border border-[#E5E7EB] p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Package size={13} className="text-[#9CA3AF]" />
-            <span className="text-[12.5px] text-[#6B7280]">Geannuleerd</span>
-          </div>
-          <p className="text-[26px] font-semibold text-[#111827] leading-none mb-1.5">{cancelledOrders.length}</p>
-          <p className="text-[12px] text-[#6B7280]">Geannuleerd + mislukt</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-3.5">
-        {/* Per kanaal */}
+        {/* Omzet per kanaal */}
         <div className="bg-white rounded-lg border border-[#E5E7EB]">
           <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
             <h2 className="text-[16px] font-semibold text-[#111827]">Omzet per kanaal</h2>
           </div>
-          <div className="px-4 pt-4 pb-2">
-            {channelStats.map(({ label, count, revenue, pct, color }) => (
-              <div key={label} className="flex items-center gap-2.5 mb-3">
-                <span className="text-[12.5px] font-medium text-[#374151] w-32 flex-shrink-0 truncate">{label}</span>
+          <div className="px-4 py-4">
+            {channelStats.length === 0 ? (
+              <p className="text-[15px] text-[#9CA3AF] text-center py-6">Geen data</p>
+            ) : channelStats.map(({ kanaal, count, revenue, color }) => (
+              <div key={kanaal} className="flex items-center gap-2.5 mb-3 last:mb-0">
+                <span className="text-[12.5px] font-medium text-[#374151] w-28 flex-shrink-0 truncate">{kanaal}</span>
                 <div className="flex-1 h-2 bg-[#F3F4F6] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${(revenue / maxRevenue) * 100}%`, backgroundColor: color }}
+                  />
                 </div>
-                <div className="text-right min-w-[90px]">
+                <div className="text-right min-w-[100px]">
                   <span className="text-[12.5px] font-medium text-[#374151]">
                     €{revenue.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
@@ -146,17 +209,19 @@ export default function RapportagesPage() {
         {/* Top producten */}
         <div className="bg-white rounded-lg border border-[#E5E7EB]">
           <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
-            <h2 className="text-[16px] font-semibold text-[#111827]">Top producten (omzet)</h2>
+            <h2 className="text-[16px] font-semibold text-[#111827]">Top producten</h2>
           </div>
           <div className="divide-y divide-[#F3F4F6]">
-            {topProducts.slice(0, 6).map(p => (
+            {topProducts.length === 0 ? (
+              <p className="text-[15px] text-[#9CA3AF] text-center py-8">Geen data</p>
+            ) : topProducts.map(p => (
               <div key={p.sku} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-[15.5px] font-medium text-[#111827]">{p.naam}</p>
-                  <p className="text-[12px] text-[#9CA3AF] font-mono">{p.sku} — {p.stuks} stuks</p>
+                  <p className="text-[12px] text-[#9CA3AF] font-mono">{p.sku} · {p.stuks} stuks</p>
                 </div>
                 <span className="text-[15.5px] font-semibold text-[#111827]">
-                  €{p.omzet.toFixed(2)}
+                  €{p.omzet.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             ))}
@@ -164,8 +229,25 @@ export default function RapportagesPage() {
         </div>
       </div>
 
-      <div className="bg-[#FFFBEB] border border-yellow-200 rounded-lg px-4 py-3 text-[15.5px] text-[#92400E]">
-        <strong>Opmerking:</strong> Rapportages zijn gebaseerd op livedata uit Supabase. Grafieken, datumfilters en exportfuncties worden toegevoegd in een volgende fase.
+      {/* Orders per status */}
+      <div className="bg-white rounded-lg border border-[#E5E7EB]">
+        <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
+          <h2 className="text-[16px] font-semibold text-[#111827]">Orders per status</h2>
+        </div>
+        {statusBreakdown.length === 0 ? (
+          <p className="text-[15px] text-[#9CA3AF] text-center py-8">Geen data</p>
+        ) : (
+          <div className="flex flex-wrap">
+            {statusBreakdown.map(([status, count]) => (
+              <div key={status} className="flex-1 min-w-[120px] px-4 py-4 border-r border-b border-[#F3F4F6] last:border-r-0 text-center">
+                <p className="text-[24px] font-semibold text-[#111827] leading-none mb-2">{count}</p>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium ${STATUS_STYLE[status as OrderStatus]}`}>
+                  {STATUS_LABEL[status as OrderStatus] ?? status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
