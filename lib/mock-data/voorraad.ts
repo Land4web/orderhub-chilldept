@@ -1,0 +1,28 @@
+import type { Voorraad } from '@/lib/types'
+
+export const voorraad: Voorraad[] = [
+  { sku: 'CD-HOODIE-BLK-S', beschikbaar: 12, gereserveerd: 2, minimumDrempel: 5, locatie: 'A1-01' },
+  { sku: 'CD-HOODIE-BLK-M', beschikbaar: 28, gereserveerd: 5, minimumDrempel: 10, locatie: 'A1-02' },
+  { sku: 'CD-HOODIE-BLK-L', beschikbaar: 19, gereserveerd: 3, minimumDrempel: 10, locatie: 'A1-03' },
+  { sku: 'CD-HOODIE-BLK-XL', beschikbaar: 4, gereserveerd: 1, minimumDrempel: 5, locatie: 'A1-04' },
+  { sku: 'CD-HOODIE-NVY-S', beschikbaar: 8, gereserveerd: 1, minimumDrempel: 5, locatie: 'A2-01' },
+  { sku: 'CD-HOODIE-NVY-M', beschikbaar: 15, gereserveerd: 2, minimumDrempel: 10, locatie: 'A2-02' },
+  { sku: 'CD-HOODIE-NVY-L', beschikbaar: 11, gereserveerd: 2, minimumDrempel: 10, locatie: 'A2-03' },
+  { sku: 'CD-HOODIE-NVY-XL', beschikbaar: 3, gereserveerd: 1, minimumDrempel: 5, locatie: 'A2-04' },
+  { sku: 'CD-SHIRT-BLK-M', beschikbaar: 45, gereserveerd: 8, minimumDrempel: 15, locatie: 'B1-01' },
+  { sku: 'CD-SHIRT-BLK-L', beschikbaar: 33, gereserveerd: 4, minimumDrempel: 15, locatie: 'B1-02' },
+  { sku: 'CD-SHIRT-BLK-XL', beschikbaar: 2, gereserveerd: 1, minimumDrempel: 10, locatie: 'B1-03' },
+  { sku: 'CD-SHIRT-WHT-S', beschikbaar: 22, gereserveerd: 1, minimumDrempel: 10, locatie: 'B2-01' },
+  { sku: 'CD-SHIRT-WHT-M', beschikbaar: 38, gereserveerd: 6, minimumDrempel: 15, locatie: 'B2-02' },
+  { sku: 'CD-SHIRT-WHT-L', beschikbaar: 17, gereserveerd: 3, minimumDrempel: 15, locatie: 'B2-03' },
+  { sku: 'CD-SHIRT-WHT-XL', beschikbaar: 0, gereserveerd: 0, minimumDrempel: 10, locatie: 'B2-04' },
+  { sku: 'CD-JOGGER-BLK-S', beschikbaar: 9, gereserveerd: 2, minimumDrempel: 5, locatie: 'C1-01' },
+  { sku: 'CD-JOGGER-BLK-M', beschikbaar: 14, gereserveerd: 3, minimumDrempel: 10, locatie: 'C1-02' },
+  { sku: 'CD-JOGGER-BLK-XL', beschikbaar: 6, gereserveerd: 1, minimumDrempel: 5, locatie: 'C1-03' },
+  { sku: 'CD-JOGGER-GRY-S', beschikbaar: 20, gereserveerd: 4, minimumDrempel: 10, locatie: 'C2-01' },
+  { sku: 'CD-JOGGER-GRY-M', beschikbaar: 16, gereserveerd: 2, minimumDrempel: 10, locatie: 'C2-02' },
+  { sku: 'CD-JOGGER-GRY-L', beschikbaar: 11, gereserveerd: 1, minimumDrempel: 10, locatie: 'C2-03' },
+  { sku: 'CD-JOGGER-GRY-XL', beschikbaar: 4, gereserveerd: 1, minimumDrempel: 5, locatie: 'C2-04' },
+  { sku: 'CD-CAP-BLK', beschikbaar: 62, gereserveerd: 9, minimumDrempel: 20, locatie: 'D1-01' },
+  { sku: 'CD-CAP-WHT', beschikbaar: 3, gereserveerd: 1, minimumDrempel: 10, locatie: 'D1-02' },
+]
