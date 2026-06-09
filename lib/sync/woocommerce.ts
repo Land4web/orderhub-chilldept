@@ -1,7 +1,7 @@
 import type { Order, OrderRegel } from '@/lib/types'
 
 interface WCBilling {
-  first_name: string; last_name: string; email: string
+  first_name: string; last_name: string; email: string; phone: string
   address_1: string; postcode: string; city: string; country: string
 }
 interface WCLineItem {
@@ -54,6 +54,8 @@ export function mapWCOrder(wc: WCOrder, kanaal = 'WooCommerce'): { order: Omit<O
       totaal: parseFloat(wc.total),
       notities: wc.customer_note || null,
       afasIngevoerdOp: null,
+      trackingCode: null,
+      klantTelefoon: wc.billing.phone || null,
       aangemaaktOp: new Date(wc.date_created).toISOString(),
       bijgewerktOp: new Date(wc.date_modified).toISOString(),
     },

@@ -1,19 +1,14 @@
 'use client'
 
-import { use, useState, useEffect } from 'react'
+import { use, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { getOrderById } from '@/lib/db/orders'
-import { updateOrderStatus, saveNote, toggleAfasStatus } from '@/lib/actions/orders'
+import { updateOrderStatus, saveNote, toggleAfasStatus, saveTrackingCode, deleteOrder } from '@/lib/actions/orders'
 import { STATUS_LABEL, STATUS_STYLE, channelStyle } from '@/lib/styles'
-import { Check, ChevronDown, Download } from 'lucide-react'
+import { Check, ChevronDown, Download, Trash2, X } from 'lucide-react'
 import type { Order, OrderStatus, AfasStatus } from '@/lib/types'
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('nl-NL', {
-    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  })
-}
 
 function formatDateShort(iso: string) {
   const d = new Date(iso)
@@ -26,14 +21,14 @@ function formatDateShort(iso: string) {
 const ALL_STATUSES: OrderStatus[] = ['new', 'processing', 'ready_to_ship', 'shipped', 'completed', 'cancelled', 'returned']
 
 function buildTimeline(status: OrderStatus, afasStatus: AfasStatus, order: Order) {
-  const events: { title: string; meta: string; active: boolean; green: boolean }[] = []
+  const events: { title: string; meta: string; timestamp: string | null; active: boolean; green: boolean }[] = []
   const statusOrder: OrderStatus[] = ['new', 'processing', 'ready_to_ship', 'shipped', 'completed']
   const idx = statusOrder.indexOf(status)
 
   if (status === 'cancelled') {
-    events.push({ title: 'Geannuleerd', meta: 'Handmatig geannuleerd', active: true, green: false })
+    events.push({ title: 'Geannuleerd', meta: 'Handmatig geannuleerd', timestamp: order.bijgewerktOp, active: true, green: false })
   } else if (status === 'returned') {
-    events.push({ title: 'Retour ontvangen', meta: 'Retour verwerkt', active: true, green: false })
+    events.push({ title: 'Retour ontvangen', meta: 'Retour verwerkt', timestamp: order.bijgewerktOp, active: true, green: false })
   } else if (idx >= 0) {
     const labels: Partial<Record<OrderStatus, string>> = {
       completed: 'Afgerond', shipped: 'Verzonden',
@@ -41,17 +36,24 @@ function buildTimeline(status: OrderStatus, afasStatus: AfasStatus, order: Order
     }
     for (let i = idx; i > 0; i--) {
       const s = statusOrder[i]
-      events.push({ title: labels[s] ?? STATUS_LABEL[s], meta: 'Statuswijziging', active: i === idx, green: i < idx })
+      events.push({
+        title: labels[s] ?? STATUS_LABEL[s],
+        meta: 'Statuswijziging',
+        timestamp: i === idx ? order.bijgewerktOp : null,
+        active: i === idx,
+        green: i < idx,
+      })
     }
   }
 
   if (afasStatus === 'entered') {
-    events.push({ title: 'AFAS ingevoerd', meta: 'Handmatig ingevoerd', active: false, green: true })
+    events.push({ title: 'AFAS ingevoerd', meta: 'Handmatig ingevoerd', timestamp: order.afasIngevoerdOp ?? null, active: false, green: true })
   }
 
   events.push({
     title: 'Order ontvangen',
-    meta: `${formatDateShort(order.aangemaaktOp)} · via ${order.kanaal}`,
+    meta: `via ${order.kanaal}`,
+    timestamp: order.aangemaaktOp,
     active: false,
     green: false,
   })
@@ -61,6 +63,7 @@ function buildTimeline(status: OrderStatus, afasStatus: AfasStatus, order: Order
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [loadError, setLoadError] = useState(false)
 
@@ -70,6 +73,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [note, setNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
   const [addingNote, setAddingNote] = useState(false)
+  const [trackingCode, setTrackingCode] = useState<string | null>(null)
+  const [trackingInput, setTrackingInput] = useState('')
+
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [undoAction, setUndoAction] = useState<{ label: string; revert: () => Promise<void> } | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     getOrderById(id).then(o => {
@@ -79,6 +88,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       setAfasStatus(o.afasStatus)
       setAfasIngevoerdOp(o.afasIngevoerdOp ?? null)
       setNote(o.notities)
+      setTrackingCode(o.trackingCode)
+      setTrackingInput(o.trackingCode ?? '')
     })
   }, [id])
 
@@ -93,17 +104,40 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const timeline = buildTimeline(status, afasStatus, order)
 
+  function showUndo(label: string, revert: () => Promise<void>) {
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    setUndoAction({ label, revert })
+    undoTimer.current = setTimeout(() => setUndoAction(null), 6000)
+  }
+
+  function dismissUndo() {
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    setUndoAction(null)
+  }
+
   async function handleStatusChange(newStatus: OrderStatus) {
+    const prev = status
     setStatus(newStatus)
     await updateOrderStatus(id, newStatus)
+    showUndo(`Status gewijzigd naar "${STATUS_LABEL[newStatus]}"`, async () => {
+      setStatus(prev)
+      await updateOrderStatus(id, prev)
+    })
   }
 
   async function handleToggleAfas() {
-    const newStatus: AfasStatus = afasStatus === 'entered' ? 'not_entered' : 'entered'
-    setAfasStatus(newStatus)
-    if (newStatus === 'entered') setAfasIngevoerdOp(new Date().toISOString())
+    const newAfas: AfasStatus = afasStatus === 'entered' ? 'not_entered' : 'entered'
+    const prevAfas = afasStatus
+    const prevAfasOp = afasIngevoerdOp
+    setAfasStatus(newAfas)
+    if (newAfas === 'entered') setAfasIngevoerdOp(new Date().toISOString())
     else setAfasIngevoerdOp(null)
-    await toggleAfasStatus(id, newStatus)
+    await toggleAfasStatus(id, newAfas)
+    showUndo(newAfas === 'entered' ? 'AFAS ingevoerd' : 'AFAS verwijderd', async () => {
+      setAfasStatus(prevAfas)
+      setAfasIngevoerdOp(prevAfasOp)
+      await toggleAfasStatus(id, prevAfas)
+    })
   }
 
   async function handleSaveNote() {
@@ -112,6 +146,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     setAddingNote(false)
     setNoteInput('')
     await saveNote(id, val)
+  }
+
+  async function handleSaveTracking() {
+    setTrackingCode(trackingInput || null)
+    await saveTrackingCode(id, trackingInput)
+  }
+
+  async function handleDelete() {
+    await deleteOrder(id)
+    router.push('/orders')
   }
 
   return (
@@ -179,6 +223,31 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           >
             Annuleren
           </button>
+          {deleteConfirm ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#FEF2F2] border border-[#FECACA] rounded-md">
+              <span className="text-[14px] text-[#EF4444] font-medium">Permanent verwijderen?</span>
+              <button
+                onClick={handleDelete}
+                className="text-[14px] font-semibold text-white bg-[#EF4444] px-2 py-0.5 rounded hover:bg-[#DC2626] transition-colors"
+              >
+                Ja
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="text-[14px] text-[#6B7280] hover:text-[#374151] transition-colors"
+              >
+                Nee
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium border border-[#E5E7EB] text-[#6B7280] bg-white hover:bg-[#FEF2F2] hover:border-[#FECACA] hover:text-[#EF4444] transition-colors"
+            >
+              <Trash2 size={12} />
+              Verwijderen
+            </button>
+          )}
         </div>
       </div>
 
@@ -221,6 +290,37 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
+          {/* Verzending */}
+          <div className="bg-white rounded-lg border border-[#E5E7EB]">
+            <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
+              <h2 className="text-[16px] font-semibold text-[#111827]">Verzending</h2>
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[12px] text-[#9CA3AF] mb-1.5">Track & Trace code</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={trackingInput}
+                  onChange={e => setTrackingInput(e.target.value)}
+                  placeholder="Bijv. 3SBOL123456789"
+                  className="flex-1 px-3 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] transition-colors"
+                />
+                <button
+                  onClick={handleSaveTracking}
+                  disabled={trackingInput === (trackingCode ?? '')}
+                  className="px-3 py-1.5 text-[15px] font-medium bg-[#E8A000] text-white rounded-md hover:bg-[#d49200] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Opslaan
+                </button>
+              </div>
+              {trackingCode && trackingInput === trackingCode && (
+                <p className="mt-1.5 text-[12px] text-[#6B7280]">
+                  Opgeslagen: <span className="font-mono">{trackingCode}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* Tijdlijn */}
           <div className="bg-white rounded-lg border border-[#E5E7EB]">
             <div className="px-4 py-3.5 border-b border-[#E5E7EB]">
@@ -246,7 +346,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div>
                       <p className="text-[15.5px] font-medium text-[#111827]">{ev.title}</p>
-                      <p className="text-[12px] text-[#9CA3AF]">{ev.meta}</p>
+                      <p className="text-[12px] text-[#9CA3AF]">
+                        {ev.timestamp ? `${formatDateShort(ev.timestamp)} · ${ev.meta}` : ev.meta}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -322,6 +424,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   {order.klantEmail}
                 </a>
               </div>
+              {order.klantTelefoon && (
+                <div>
+                  <p className="text-[12px] text-[#9CA3AF]">Telefoon</p>
+                  <a href={`tel:${order.klantTelefoon}`} className="text-[15.5px] text-[#374151] hover:underline">
+                    {order.klantTelefoon}
+                  </a>
+                </div>
+              )}
               <div>
                 <p className="text-[12px] text-[#9CA3AF]">Afleveradres</p>
                 <div className="text-[15.5px] text-[#374151] leading-relaxed">
@@ -389,6 +499,25 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </div>
+
+      {/* Undo toast */}
+      {undoAction && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#1F2937] text-white px-4 py-2.5 rounded-lg shadow-xl z-50 text-[15px] whitespace-nowrap">
+          <span className="text-[#D1D5DB]">{undoAction.label}</span>
+          <button
+            onClick={async () => {
+              dismissUndo()
+              await undoAction.revert()
+            }}
+            className="font-semibold text-[#FCD34D] hover:text-[#FDE68A] transition-colors"
+          >
+            Ongedaan maken
+          </button>
+          <button onClick={dismissUndo} className="text-[#6B7280] hover:text-white transition-colors ml-1">
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -32,6 +32,8 @@ async function upsertOrder(
     klant_stad: order.klantStad, klant_land: order.klantLand,
     totaal: order.totaal, notities: order.notities,
     afas_ingevoerd_op: order.afasIngevoerdOp,
+    tracking_code: order.trackingCode,
+    klant_telefoon: order.klantTelefoon,
     aangemaakt_op: order.aangemaaktOp, bijgewerkt_op: order.bijgewerktOp,
   }, { onConflict: 'id' })
 

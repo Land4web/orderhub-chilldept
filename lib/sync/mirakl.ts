@@ -2,9 +2,9 @@ import type { Order, OrderRegel } from '@/lib/types'
 
 interface MiraklAddress {
   firstname: string; lastname: string; street_1: string
-  zip_code: string; city: string; country_iso_code: string
+  zip_code: string; city: string; country_iso_code: string; phone?: string
 }
-interface MiraklCustomer { email: string }
+interface MiraklCustomer { email: string; phone?: string }
 interface MiraklOrderLine {
   offer_sku: string; offer_title: string; quantity: number
   unit_price: number; price: number
@@ -60,6 +60,8 @@ export function mapMiraklOrder(m: MiraklOrder, kanaal = 'Mirakl'): { order: Omit
       totaal: m.total_price,
       notities: null,
       afasIngevoerdOp: null,
+      trackingCode: null,
+      klantTelefoon: addr.phone || m.customer.phone || null,
       aangemaaktOp: new Date(m.order_date).toISOString(),
       bijgewerktOp: new Date(m.last_updated_date).toISOString(),
     },

@@ -39,6 +39,20 @@ export async function bulkUpdateStatus(ids: string[], status: OrderStatus) {
     .in('id', ids)
 }
 
+export async function saveTrackingCode(id: string, code: string) {
+  const supabase = await createClient()
+  await supabase
+    .from('orders')
+    .update({ tracking_code: code || null, bijgewerkt_op: new Date().toISOString() })
+    .eq('id', id)
+}
+
+export async function deleteOrder(id: string) {
+  const supabase = await createClient()
+  await supabase.from('order_regels').delete().eq('order_id', id)
+  await supabase.from('orders').delete().eq('id', id)
+}
+
 export async function bulkMarkAfas(ids: string[]) {
   const supabase = await createClient()
   await supabase

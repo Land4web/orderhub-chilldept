@@ -45,6 +45,8 @@ export interface Order {
   bijgewerktOp: string
   notities: string | null
   afasIngevoerdOp?: string | null
+  trackingCode: string | null
+  klantTelefoon: string | null
 }
 
 export interface Product {

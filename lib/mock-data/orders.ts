@@ -21,6 +21,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T08:12:00Z',
     bijgewerktOp: '2024-06-04T08:12:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-002',
@@ -39,6 +41,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T09:03:00Z',
     bijgewerktOp: '2024-06-04T10:45:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T10:45:00Z',
   },
   {
@@ -61,6 +65,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-03T14:22:00Z',
     bijgewerktOp: '2024-06-04T07:30:00Z',
     notities: 'Klant heeft gevraagd om cadeauverpakking',
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T07:35:00Z',
   },
   {
@@ -80,6 +86,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-02T11:00:00Z',
     bijgewerktOp: '2024-06-03T09:15:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-02T14:00:00Z',
   },
   {
@@ -102,6 +110,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-05-30T16:40:00Z',
     bijgewerktOp: '2024-06-02T14:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-05-31T09:00:00Z',
   },
   {
@@ -121,6 +131,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-01T10:00:00Z',
     bijgewerktOp: '2024-06-01T12:30:00Z',
     notities: 'Geannuleerd op verzoek van klant',
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-007',
@@ -139,6 +151,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-05-28T09:00:00Z',
     bijgewerktOp: '2024-06-03T11:20:00Z',
     notities: 'Maat te groot — retour ontvangen',
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-008',
@@ -157,6 +171,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T06:55:00Z',
     bijgewerktOp: '2024-06-04T07:05:00Z',
     notities: 'Betaling mislukt — order geblokkeerd',
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-009',
@@ -178,6 +194,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T07:30:00Z',
     bijgewerktOp: '2024-06-04T09:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T09:00:00Z',
   },
   {
@@ -200,6 +218,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-02T15:10:00Z',
     bijgewerktOp: '2024-06-03T10:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-02T17:30:00Z',
   },
   {
@@ -219,6 +239,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T10:00:00Z',
     bijgewerktOp: '2024-06-04T10:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-012',
@@ -240,6 +262,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-03T08:30:00Z',
     bijgewerktOp: '2024-06-04T08:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T08:00:00Z',
   },
   {
@@ -259,6 +283,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-05-29T12:00:00Z',
     bijgewerktOp: '2024-06-01T09:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-05-29T14:00:00Z',
   },
   {
@@ -281,6 +307,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T06:00:00Z',
     bijgewerktOp: '2024-06-04T09:30:00Z',
     notities: 'Adres verificatie vereist',
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-015',
@@ -299,6 +327,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-02T13:00:00Z',
     bijgewerktOp: '2024-06-03T08:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-02T16:00:00Z',
   },
   {
@@ -318,6 +348,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T10:45:00Z',
     bijgewerktOp: '2024-06-04T10:45:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-017',
@@ -338,6 +370,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-05-27T14:00:00Z',
     bijgewerktOp: '2024-06-03T15:00:00Z',
     notities: 'Beschadigd ontvangen — retour in behandeling',
+    trackingCode: null,
+    klantTelefoon: null,
   },
   {
     id: 'ORD-2024-018',
@@ -359,6 +393,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-03T11:00:00Z',
     bijgewerktOp: '2024-06-04T06:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T06:00:00Z',
   },
   {
@@ -381,6 +417,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-05-31T09:00:00Z',
     bijgewerktOp: '2024-06-02T16:00:00Z',
     notities: null,
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-05-31T11:00:00Z',
   },
   {
@@ -404,6 +442,8 @@ export const orders: Order[] = [
     aangemaaktOp: '2024-06-04T05:00:00Z',
     bijgewerktOp: '2024-06-04T08:30:00Z',
     notities: 'Grote bestelling — prioriteit',
+    trackingCode: null,
+    klantTelefoon: null,
     afasIngevoerdOp: '2024-06-04T08:30:00Z',
   },
 ]

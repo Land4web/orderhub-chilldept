@@ -18,6 +18,8 @@ function mapOrder(row: Record<string, unknown>, regels: OrderRegel[]): Order {
     totaal: Number(row.totaal),
     notities: (row.notities as string) ?? null,
     afasIngevoerdOp: (row.afas_ingevoerd_op as string) ?? null,
+    trackingCode: (row.tracking_code as string) ?? null,
+    klantTelefoon: (row.klant_telefoon as string) ?? null,
     aangemaaktOp: row.aangemaakt_op as string,
     bijgewerktOp: row.bijgewerkt_op as string,
   }
