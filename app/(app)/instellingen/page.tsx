@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getProfiles, updateUserRole, createUser, deleteUser, updateUserProfile, adminResetPassword, updateOwnPassword } from '@/lib/actions/users'
 import { getAllKanaalConfigs, saveKanaalConfig, deleteKanaalConfig } from '@/lib/actions/kanaal-config'
 import { ROLE_LABELS } from '@/lib/auth'
-import { Users, Settings, Shield, Trash2, Plus, Check, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { Users, Settings, Shield, Trash2, Plus, Check, ChevronDown, ChevronUp, Pencil, Wifi, WifiOff, Loader2 } from 'lucide-react'
 import type { Role } from '@/lib/auth'
 import type { Profile } from '@/lib/actions/users'
 import type { KanaalConfigRow, KanaalType } from '@/lib/types'
@@ -44,9 +44,32 @@ function KanaalCard({
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const configured = !!(row.config?.url && (
     row.type === 'woocommerce' ? row.config.consumer_key : row.config.api_key
   ))
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch(`/api/sync/test/${encodeURIComponent(row.kanaal)}`)
+      const data = await res.json()
+      if (data.ok) {
+        const msg = data.total !== undefined
+          ? `Verbinding OK — ${data.total} orders beschikbaar`
+          : 'Verbinding OK'
+        setTestResult({ ok: true, message: msg })
+      } else {
+        setTestResult({ ok: false, message: data.error ?? 'Verbinding mislukt' })
+      }
+    } catch {
+      setTestResult({ ok: false, message: 'Kon testverzoek niet versturen' })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -80,6 +103,16 @@ function KanaalCard({
           }`}>
             {configured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
           </span>
+          {configured && (
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              title="Verbinding testen"
+              className="p-1.5 text-[#9CA3AF] hover:text-[#2563EB] disabled:opacity-40 transition-colors"
+            >
+              {testing ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
+            </button>
+          )}
           <button
             onClick={() => setOpen(o => !o)}
             className="p-1.5 text-[#9CA3AF] hover:text-[#374151] transition-colors"
@@ -95,6 +128,17 @@ function KanaalCard({
           </button>
         </div>
       </div>
+
+      {testResult && (
+        <div className={`flex items-start gap-2 px-4 py-2.5 border-t text-[13px] ${
+          testResult.ok
+            ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D]'
+            : 'bg-[#FEF2F2] border-[#FECACA] text-[#DC2626]'
+        }`}>
+          {testResult.ok ? <Wifi size={13} className="mt-0.5 flex-shrink-0" /> : <WifiOff size={13} className="mt-0.5 flex-shrink-0" />}
+          <span>{testResult.message}</span>
+        </div>
+      )}
 
       {open && (
         <form onSubmit={handleSave} className="px-4 pb-4 pt-1 border-t border-[#F3F4F6] space-y-3">
