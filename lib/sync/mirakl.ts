@@ -26,14 +26,25 @@ const STATUS_MAP: Record<string, Order['status']> = {
 
 export async function fetchMiraklOrders(url: string, apiKey: string): Promise<MiraklOrder[]> {
   const base = url.replace(/\/$/, '')
-  const states = 'WAITING_ACCEPTANCE,STAGING,SHIPPING,RECEIVED,REFUSED,REFUNDED'
-  const res = await fetch(
-    `${base}/api/orders?order_states=${states}&max=50&start=0`,
-    { headers: { Authorization: apiKey }, cache: 'no-store' }
-  )
-  if (!res.ok) throw new Error(`Mirakl API fout: ${res.status} ${res.statusText}`)
-  const data: MiraklResponse = await res.json()
-  return data.orders ?? []
+  const states = 'WAITING_ACCEPTANCE,STAGING,SHIPPING,RECEIVED,REFUSED,REFUNDED,CLOSED,INCIDENT_OPEN,INCIDENT_CLOSED'
+  const all: MiraklOrder[] = []
+  const pageSize = 100
+  let start = 0
+
+  while (true) {
+    const res = await fetch(
+      `${base}/api/orders?order_states=${states}&max=${pageSize}&start=${start}`,
+      { headers: { Authorization: apiKey }, cache: 'no-store' }
+    )
+    if (!res.ok) throw new Error(`Mirakl API fout: ${res.status} ${res.statusText}`)
+    const data: MiraklResponse = await res.json()
+    const orders = data.orders ?? []
+    all.push(...orders)
+    if (all.length >= data.total_count || orders.length < pageSize) break
+    start += pageSize
+  }
+
+  return all
 }
 
 export function mapMiraklOrder(m: MiraklOrder, kanaal = 'Mirakl'): { order: Omit<Order, 'regels'>; regels: OrderRegel[] } {
