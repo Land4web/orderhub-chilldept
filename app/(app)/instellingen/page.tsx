@@ -20,7 +20,7 @@ const ALL_ROLES: Role[] = ['admin', 'employee', 'fulfillment']
 
 const EMPTY_FORM = { email: '', password: '', name: '', initials: '', role: 'employee' as Role }
 
-const EMPTY_WC_CONFIG = { url: '', consumer_key: '', consumer_secret: '' }
+const EMPTY_WC_CONFIG = { url: '', consumer_key: '', consumer_secret: '', taal: '' }
 const EMPTY_MIRAKL_CONFIG = { url: '', api_key: '' }
 
 const ADAPTER_LABEL: Record<KanaalType, string> = {
@@ -174,6 +174,18 @@ function KanaalCard({
                   value={form.consumer_secret}
                   onChange={e => setForm(f => ({ ...f, consumer_secret: e.target.value }))}
                   placeholder={configured ? '••••••••' : 'cs_...'}
+                  className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[12px] text-[#6B7280] font-medium block mb-1">
+                  Taalfilter <span className="text-[#C4C9D4] font-normal">(Polylang/WPML — optioneel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.taal}
+                  onChange={e => setForm(f => ({ ...f, taal: e.target.value }))}
+                  placeholder={row.config?.taal || 'bijv. nl — leeg = alle talen'}
                   className="w-full px-2.5 py-1.5 text-[15px] border border-[#E5E7EB] rounded-md outline-none focus:border-[#E8A000] bg-white"
                 />
               </div>

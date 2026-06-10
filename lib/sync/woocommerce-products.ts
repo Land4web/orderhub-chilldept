@@ -16,7 +16,7 @@ interface WCProduct {
 }
 
 export async function fetchWooCommerceProducts(
-  url: string, key: string, secret: string
+  url: string, key: string, secret: string, lang?: string
 ): Promise<WCProduct[]> {
   const base = url.replace(/\/$/, '')
   const auth = Buffer.from(`${key}:${secret}`).toString('base64')
@@ -24,8 +24,9 @@ export async function fetchWooCommerceProducts(
   let page = 1
 
   while (true) {
+    const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : ''
     const res = await fetch(
-      `${base}/wp-json/wc/v3/products?status=publish&per_page=100&page=${page}`,
+      `${base}/wp-json/wc/v3/products?status=publish&per_page=100&page=${page}${langParam}`,
       { headers: { Authorization: `Basic ${auth}` }, cache: 'no-store' }
     )
     if (!res.ok) throw new Error(`WooCommerce API fout: ${res.status} ${res.statusText}`)

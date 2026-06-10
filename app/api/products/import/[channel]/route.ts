@@ -37,7 +37,7 @@ export async function POST(
   let fouten = 0
 
   try {
-    const rawProducts = await fetchWooCommerceProducts(config.url, config.consumer_key, config.consumer_secret)
+    const rawProducts = await fetchWooCommerceProducts(config.url, config.consumer_key, config.consumer_secret, config.taal || undefined)
 
     let lastError = ''
     for (const raw of rawProducts) {
