@@ -39,6 +39,7 @@ export async function POST(
   try {
     const rawProducts = await fetchWooCommerceProducts(config.url, config.consumer_key, config.consumer_secret)
 
+    let lastError = ''
     for (const raw of rawProducts) {
       try {
         const mapped = mapWCProduct(raw, kanaalNaam)
@@ -52,7 +53,7 @@ export async function POST(
 
         const productId = existing?.id ?? crypto.randomUUID()
 
-        await supabaseAdmin.from('products').upsert({
+        const { error: productErr } = await supabaseAdmin.from('products').upsert({
           id: productId,
           sku: mapped.sku,
           naam: mapped.naam,
@@ -63,20 +64,29 @@ export async function POST(
           actief: mapped.actief,
           kanalen: mapped.kanalen,
         }, { onConflict: 'id' })
+        if (productErr) throw new Error(productErr.message)
 
-        await supabaseAdmin.from('voorraad').upsert({
+        const { error: voorraadErr } = await supabaseAdmin.from('voorraad').upsert({
           sku: mapped.sku,
           beschikbaar: mapped.beschikbaar,
           gereserveerd: 0,
           minimum_drempel: mapped.minimumDrempel,
           locatie: mapped.locatie,
         }, { onConflict: 'sku' })
+        if (voorraadErr) throw new Error(voorraadErr.message)
 
         verwerkt++
-      } catch { fouten++ }
+      } catch (e) {
+        fouten++
+        lastError = e instanceof Error ? e.message : String(e)
+      }
     }
 
-    return Response.json({ verwerkt, fouten, totaal: rawProducts.length })
+    const resultMsg = verwerkt > 0
+      ? `${verwerkt} producten geïmporteerd${fouten > 0 ? ` · ${fouten} fouten: ${lastError}` : ''}`
+      : `Alle ${fouten} producten mislukt: ${lastError}`
+
+    return Response.json({ verwerkt, fouten, totaal: rawProducts.length, bericht: resultMsg })
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : 'Import mislukt' }, { status: 500 })
   }
