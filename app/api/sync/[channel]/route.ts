@@ -24,7 +24,7 @@ async function upsertOrder(
   order: Awaited<ReturnType<typeof mapWCOrder>>['order'],
   regels: Awaited<ReturnType<typeof mapWCOrder>>['regels']
 ) {
-  await supabaseAdmin.from('orders').upsert({
+  const { error: orderErr } = await supabaseAdmin.from('orders').upsert({
     id: order.id, kanaal: order.kanaal, kanaal_order_id: order.kanaalOrderId,
     status: order.status, afas_status: order.afasStatus,
     klant_naam: order.klantNaam, klant_email: order.klantEmail,
@@ -32,16 +32,18 @@ async function upsertOrder(
     klant_stad: order.klantStad, klant_land: order.klantLand,
     totaal: order.totaal, notities: order.notities,
     afas_ingevoerd_op: order.afasIngevoerdOp,
-    tracking_code: order.trackingCode,
-    klant_telefoon: order.klantTelefoon,
     aangemaakt_op: order.aangemaaktOp, bijgewerkt_op: order.bijgewerktOp,
   }, { onConflict: 'id' })
+  if (orderErr) throw new Error(orderErr.message)
 
-  await supabaseAdmin.from('order_regels').delete().eq('order_id', order.id)
+  const { error: delErr } = await supabaseAdmin.from('order_regels').delete().eq('order_id', order.id)
+  if (delErr) throw new Error(delErr.message)
+
   if (regels.length > 0) {
-    await supabaseAdmin.from('order_regels').insert(
+    const { error: regelErr } = await supabaseAdmin.from('order_regels').insert(
       regels.map(r => ({ order_id: order.id, sku: r.sku, naam: r.naam, aantal: r.aantal, prijs: r.prijs }))
     )
+    if (regelErr) throw new Error(regelErr.message)
   }
 }
 
@@ -76,6 +78,7 @@ export async function POST(
       ? await fetchWooCommerceOrders(config.url, config.consumer_key, config.consumer_secret)
       : await fetchMiraklOrders(config.url, config.api_key)
 
+    let lastError = ''
     for (const raw of rawOrders) {
       try {
         const { order, regels } = type === 'woocommerce'
@@ -85,12 +88,15 @@ export async function POST(
           : mapMiraklOrder(raw as any, kanaalNaam)
         await upsertOrder(order, regels)
         verwerkt++
-      } catch {
+      } catch (e) {
         fouten++
+        lastError = e instanceof Error ? e.message : String(e)
       }
     }
 
-    const bericht = verwerkt > 0 ? `${verwerkt} orders verwerkt` : 'Geen nieuwe orders'
+    const bericht = verwerkt > 0
+      ? `${verwerkt} orders verwerkt${fouten > 0 ? ` · ${fouten} fouten: ${lastError}` : ''}`
+      : fouten > 0 ? `Alle ${fouten} orders mislukt: ${lastError}` : 'Geen nieuwe orders'
     const status = fouten > 0 && verwerkt === 0 ? 'error' : fouten > 0 ? 'warning' : 'success'
 
     await supabaseAdmin.from('sync_logs').insert({

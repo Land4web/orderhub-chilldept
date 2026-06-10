@@ -15,6 +15,7 @@ let _instance: ReturnType<typeof makeClient> | null = null
 export const supabaseAdmin = new Proxy({} as ReturnType<typeof makeClient>, {
   get(_, prop: string | symbol) {
     if (!_instance) _instance = makeClient()
-    return Reflect.get(_instance, prop)
+    const value = Reflect.get(_instance, prop)
+    return typeof value === 'function' ? (value as Function).bind(_instance) : value
   },
 })
